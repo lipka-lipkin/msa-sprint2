@@ -1,0 +1,11 @@
+$ ./check-canary.sh   # 2026-10-26 17:16:48 UTC
+▶️ Checking canary release (90% v1, 10% v2)...
+[INFO] 100 запросов на http://localhost:9090/ping:
+           91 v1
+            9 v2
+[INFO] v1: 91 (91%), v2: 9 (9%), ошибок: 0
+[INFO] Upstream-кластеры в access-логе ingress gateway (последние 100 запросов):
+           90 outbound|80|primary|booking-service
+           10 outbound|80|v2|booking-service
+[PASS] Canary: трафик разделён примерно 90/10
+exit code: 0

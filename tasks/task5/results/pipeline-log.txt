@@ -1,0 +1,234 @@
+parsing and downloads finished in 225 ms.
+json schema validated in 157 ms
+build     starting shell (build)
+unit-test starting shell (test)
+build     $ docker build -t "$IMAGE_NAME:$IMAGE_TAG" booking-service
+unit-test $ docker build --progress=plain --no-cache-filter test --target test -t "$IMAGE_NAME:unit-test" booking-service
+build     > #0 building with "desktop-linux" instance using docker driver
+build     > 
+build     > #1 [internal] load build definition from Dockerfile
+build     > #1 transferring dockerfile: 1.02kB done
+build     > #1 DONE 0.0s
+build     > 
+build     > #2 [internal] load metadata for docker.io/library/golang:1.21-alpine
+unit-test > #0 building with "desktop-linux" instance using docker driver
+unit-test > 
+unit-test > #1 [internal] load build definition from Dockerfile
+unit-test > #1 transferring dockerfile: 1.02kB done
+unit-test > #1 DONE 0.0s
+unit-test > 
+unit-test > #2 [internal] load metadata for docker.io/library/golang:1.21-alpine
+unit-test > #2 DONE 0.5s
+build     > #2 DONE 0.5s
+build     > 
+build     > #3 [internal] load metadata for docker.io/library/alpine:3.20
+unit-test > 
+unit-test > #3 [internal] load .dockerignore
+unit-test > #3 transferring context: 2B done
+unit-test > #3 DONE 0.0s
+unit-test > 
+unit-test > #4 [base 1/5] FROM docker.io/library/golang:1.21-alpine@sha256:2414035b086e3c42b99654c8b26e6f5b1b1598080d65fd03c7f499552ff4dc94
+unit-test > #4 resolve docker.io/library/golang:1.21-alpine@sha256:2414035b086e3c42b99654c8b26e6f5b1b1598080d65fd03c7f499552ff4dc94 0.0s done
+unit-test > #4 DONE 0.0s
+unit-test > 
+unit-test > #5 [internal] load build context
+unit-test > #5 transferring context: 259B done
+unit-test > #5 DONE 0.0s
+unit-test > 
+unit-test > #6 [base 2/5] WORKDIR /src
+unit-test > #6 CACHED
+unit-test > 
+unit-test > #7 [base 3/5] COPY go.mod ./
+unit-test > #7 CACHED
+unit-test > 
+unit-test > #8 [base 4/5] RUN go mod download
+unit-test > #8 CACHED
+unit-test > 
+unit-test > #9 [base 5/5] COPY *.go ./
+unit-test > #9 CACHED
+unit-test > 
+unit-test > #10 [test 1/1] RUN CGO_ENABLED=0 go test -v ./...
+build     > #3 ...
+build     > 
+build     > #4 [auth] library/alpine:pull token for registry-1.docker.io
+build     > #4 DONE 0.0s
+build     > 
+build     > #3 [internal] load metadata for docker.io/library/alpine:3.20
+build     > #3 DONE 1.6s
+build     > 
+build     > #5 [base 1/5] FROM docker.io/library/golang:1.21-alpine@sha256:2414035b086e3c42b99654c8b26e6f5b1b1598080d65fd03c7f499552ff4dc94
+build     > #5 resolve docker.io/library/golang:1.21-alpine@sha256:2414035b086e3c42b99654c8b26e6f5b1b1598080d65fd03c7f499552ff4dc94 0.0s done
+build     > #5 DONE 0.0s
+build     > 
+build     > #6 [base 5/5] COPY *.go ./
+build     > #6 CACHED
+build     > 
+build     > #7 [internal] load .dockerignore
+build     > #7 transferring context: 2B done
+build     > #7 DONE 0.0s
+build     > 
+build     > #8 [internal] load build context
+build     > #8 transferring context: 12.74kB done
+build     > #8 DONE 0.0s
+build     > 
+build     > #9 [base 2/5] WORKDIR /src
+build     > #9 CACHED
+build     > 
+build     > #10 [base 5/5] COPY *.go ./
+build     > #10 CACHED
+build     > 
+build     > #11 [base 3/5] COPY go.mod ./
+build     > #11 CACHED
+build     > 
+build     > #12 [base 4/5] RUN go mod download
+build     > #12 CACHED
+build     > 
+build     > #13 [stage-3 1/3] FROM docker.io/library/alpine:3.20@sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc
+build     > #13 resolve docker.io/library/alpine:3.20@sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc 0.0s done
+build     > #13 DONE 0.0s
+build     > 
+build     > #14 [build 1/1] RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o /out/booking-service .
+unit-test > still running...
+unit-test > #10 10.96 === RUN   TestPingReturnsPongWithVersionHeader
+unit-test > #10 10.96 --- PASS: TestPingReturnsPongWithVersionHeader (0.00s)
+unit-test > #10 10.96 === RUN   TestHealthIsUp
+unit-test > #10 10.96 --- PASS: TestHealthIsUp (0.00s)
+unit-test > #10 10.96 === RUN   TestReadyFollowsLifecycle
+unit-test > #10 10.96 --- PASS: TestReadyFollowsLifecycle (0.00s)
+unit-test > #10 10.96 === RUN   TestFeatureDisabledByDefault
+unit-test > #10 10.96 --- PASS: TestFeatureDisabledByDefault (0.00s)
+unit-test > #10 10.96 === RUN   TestFeatureEnabledByEnv
+unit-test > #10 10.96 --- PASS: TestFeatureEnabledByEnv (0.00s)
+unit-test > #10 10.96 === RUN   TestFeatureHeaderWorksOnlyWhenAllowed
+unit-test > #10 10.96 --- PASS: TestFeatureHeaderWorksOnlyWhenAllowed (0.00s)
+unit-test > #10 10.96 === RUN   TestChaosFailsOnlyMeshTraffic
+unit-test > #10 10.96 --- PASS: TestChaosFailsOnlyMeshTraffic (0.00s)
+unit-test > #10 10.96 === RUN   TestChaosEndpointsRejectMeshTraffic
+unit-test > #10 10.96 --- PASS: TestChaosEndpointsRejectMeshTraffic (0.00s)
+unit-test > #10 10.96 === RUN   TestChaosEndpointsDisabledByDefault
+unit-test > #10 10.96 --- PASS: TestChaosEndpointsDisabledByDefault (0.00s)
+unit-test > #10 10.96 === RUN   TestLoadConfigReadsFlags
+unit-test > #10 10.96 --- PASS: TestLoadConfigReadsFlags (0.00s)
+unit-test > #10 10.96 PASS
+unit-test > #10 10.96 ok  	hotelio/booking-service	0.003s
+build     > still running...
+unit-test > #10 DONE 11.7s
+build     > #14 DONE 10.6s
+unit-test > 
+unit-test > #11 exporting to image
+unit-test > #11 exporting layers
+build     > 
+build     > #15 [stage-3 2/3] RUN addgroup -S app && adduser -S -G app -u 10001 app
+build     > #15 CACHED
+build     > 
+build     > #16 [stage-3 3/3] COPY --from=build /out/booking-service /usr/local/bin/booking-service
+build     > #16 DONE 0.1s
+build     > 
+build     > #17 exporting to image
+build     > #17 exporting layers
+build     > #17 exporting layers 0.2s done
+build     > #17 exporting manifest sha256:b8644b1cd29b1fe575e8d2697b9a49d85e88cad86a63e628fdc98eff8655b995 done
+build     > #17 exporting config sha256:f3c714c984698c0af4f632f759c51ec987189904639624c793eba3e280c3a08e done
+build     > #17 exporting attestation manifest sha256:bf7327cb6cb0a90ade46c077afb4ef808d301366eb175813a70aadeaf9b1e5ab done
+build     > #17 exporting manifest list sha256:b42d67d89c0c95d60d1f2beb04b8c559e0bc445c2050ee9d5aefb3b350fa12c0 done
+build     > #17 naming to docker.io/library/booking-service:latest done
+build     > #17 unpacking to docker.io/library/booking-service:latest 0.0s done
+build     > #17 DONE 0.3s
+build     > 
+build     > View build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/rq50wa8mn31np6le0mcyg79oi
+build     $ docker image ls "$IMAGE_NAME:$IMAGE_TAG"
+build     > REPOSITORY        TAG       IMAGE ID       CREATED                  SIZE
+build     > booking-service   latest    b42d67d89c0c   Less than a second ago   20.2MB
+build     finished in 14 s
+unit-test > #11 exporting layers 2.3s done
+unit-test > #11 exporting manifest sha256:03f7a20127fa04aaeb30a3b690832c714a724febf4951ec3eddd42b4c87d95ed
+unit-test > #11 exporting manifest sha256:03f7a20127fa04aaeb30a3b690832c714a724febf4951ec3eddd42b4c87d95ed done
+unit-test > #11 exporting config sha256:3a8b022d7e15e0ee76af2149e70207529cb55182c32eebef4c1bb591e93c36a7 done
+unit-test > #11 exporting attestation manifest sha256:04eb01495a16c2b2c147e5c23117baf52486cc276d03a2a178738187a710ba9a 0.0s done
+unit-test > #11 exporting manifest list sha256:ae8b68896407588fbf13b2533f0020fe941619aaad25e715e308e01201b1ff1c done
+unit-test > #11 naming to docker.io/library/booking-service:unit-test done
+unit-test > #11 unpacking to docker.io/library/booking-service:unit-test
+unit-test > #11 unpacking to docker.io/library/booking-service:unit-test 0.4s done
+unit-test > #11 DONE 2.8s
+unit-test > 
+unit-test > View build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/rrxhhuywzlhikw6xkvqfypxpu
+unit-test finished in 16 s
+test      starting shell (test)
+test      $ ./scripts/smoke-test.sh "$IMAGE_NAME:$IMAGE_TAG"
+test      > [INFO] docker run booking-service:latest (ENABLE_FEATURE_X не задан)
+test      > [PASS] GET /ping → pong
+test      > [PASS] GET /health → HTTP 200
+test      > [PASS] GET /ready → HTTP 200
+test      > [PASS] GET /feature → HTTP 404
+test      > [INFO] docker rm booking-service-smoke-53022
+test      > [INFO] docker run booking-service:latest -e ENABLE_FEATURE_X=true
+test      > [PASS] GET /ping → pong
+test      > [PASS] GET /feature → Feature X is enabled! (version smoke)
+test      > [INFO] docker rm booking-service-smoke-53022
+test      > [INFO] docker run booking-service:latest -e FEATURE_FLAGS_FROM_HEADER=true
+test      > [PASS] GET /feature → HTTP 404
+test      > [PASS] GET /feature (X-Feature-Enabled: true) → Feature X is enabled! (version v2)
+test      > [INFO] docker rm booking-service-smoke-53022
+test      > [PASS] smoke test succeeded
+test      finished in 3.27 s
+deploy    starting shell (deploy)
+deploy    $ minikube status
+deploy    > minikube
+deploy    > type: Control Plane
+deploy    > host: Running
+deploy    > kubelet: Running
+deploy    > apiserver: Running
+deploy    > kubeconfig: Configured
+deploy    > 
+deploy    $ minikube image load "$IMAGE_NAME:$IMAGE_TAG"
+deploy    $ IMAGE_ID=$(docker image inspect --format '{{.Id}}' "$IMAGE_NAME:$IMAGE_TAG" | sed 's/^sha256://' | cut -c1-12)
+deploy    $ kubectl label namespace default istio-injection=enabled --overwrite
+deploy    > namespace/default not labeled
+deploy    $ for version in $VERSIONS; do # collapsed multi-line command
+deploy    > Release "booking-service-v1" does not exist. Installing it now.
+deploy    > NAME: booking-service-v1
+deploy    > LAST DEPLOYED: Mon Oct 26 20:12:51 2026
+deploy    > NAMESPACE: default
+deploy    > STATUS: deployed
+deploy    > REVISION: 1
+deploy    > DESCRIPTION: Install complete
+deploy    > TEST SUITE: None
+deploy    > Release "booking-service-v2" does not exist. Installing it now.
+deploy    > NAME: booking-service-v2
+deploy    > LAST DEPLOYED: Mon Oct 26 20:12:58 2026
+deploy    > NAMESPACE: default
+deploy    > STATUS: deployed
+deploy    > REVISION: 1
+deploy    > DESCRIPTION: Install complete
+deploy    > TEST SUITE: None
+deploy    $ kubectl apply -f istio/
+deploy    > destinationrule.networking.istio.io/booking-service created
+deploy    > Warning: EnvoyFilter exposes internal implementation details that may change at any time. Prefer other APIs if possible, and exercise extreme caution, especially around upgrades.
+deploy    > envoyfilter.networking.istio.io/booking-feature-flag created
+deploy    > gateway.networking.istio.io/booking-gateway created
+deploy    > virtualservice.networking.istio.io/booking-service created
+deploy    $ kubectl get pods,svc -l app="$RELEASE_NAME" -L version
+deploy    > NAME                                      READY   STATUS    RESTARTS   AGE   VERSION
+deploy    > pod/booking-service-v1-68d54bd6dd-sph56   2/2     Running   0          12s   v1
+deploy    > pod/booking-service-v2-c8c866c86-6wv96    2/2     Running   0          5s    v2
+deploy    > 
+deploy    > NAME                      TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)   AGE   VERSION
+deploy    > service/booking-service   ClusterIP   10.103.81.228   <none>        80/TCP    12s   
+deploy    $ kubectl get gateways,virtualservices,destinationrules -n default
+deploy    > NAME                                          AGE
+deploy    > gateway.networking.istio.io/booking-gateway   0s
+deploy    > 
+deploy    > NAME                                                 GATEWAYS              HOSTS   AGE
+deploy    > virtualservice.networking.istio.io/booking-service   ["booking-gateway"]   ["*"]   0s
+deploy    > 
+deploy    > NAME                                                  HOST                                        AGE
+deploy    > destinationrule.networking.istio.io/booking-service   booking-service.default.svc.cluster.local   0s
+deploy    $ kubectl get envoyfilters -n istio-system
+deploy    > NAME                   AGE
+deploy    > booking-feature-flag   0s
+deploy    finished in 17 s
+
+ PASS  build    
+ PASS  unit-test
+ PASS  test     
+ PASS  deploy   

@@ -1,0 +1,5 @@
+[booking-subgraph] gRPC channel to booking-service:9090 is ready
+Enabling inline tracing for this subgraph. To disable, use ApolloServerPluginInlineTraceDisabled.
+✅ Booking subgraph ready at http://localhost:4001/ (booking-service gRPC at booking-service:9090)
+[booking-subgraph] bookingsByUser userid=user1 requested=user1 decision=ALLOW bookings=2
+[booking-subgraph] bookingsByUser userid=user2 requested=user1 decision=DENY reason=foreign bookings

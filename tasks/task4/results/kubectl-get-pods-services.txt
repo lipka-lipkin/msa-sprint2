@@ -1,0 +1,22 @@
+$ kubectl get pods -o wide
+NAME                               READY   STATUS    RESTARTS   AGE   IP            NODE       NOMINATED NODE   READINESS GATES
+booking-service-7cc4d4588f-n2dsf   1/1     Running   0          32s   10.244.0.19   minikube   <none>           <none>
+booking-service-7cc4d4588f-n9fcz   1/1     Running   0          35s   10.244.0.18   minikube   <none>           <none>
+booking-service-7cc4d4588f-tdn29   1/1     Running   0          38s   10.244.0.17   minikube   <none>           <none>
+
+$ kubectl get services
+NAME              TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)   AGE
+booking-service   ClusterIP   10.110.85.135   <none>        80/TCP    7m35s
+kubernetes        ClusterIP   10.96.0.1       <none>        443/TCP   11m
+
+$ kubectl get deployment booking-service
+NAME              READY   UP-TO-DATE   AVAILABLE   AGE
+booking-service   3/3     3            3           7m35s
+
+$ helm list
+NAME           	NAMESPACE	REVISION	UPDATED                             	STATUS  	CHART                	APP VERSION
+booking-service	default  	5       	2026-10-26 18:37:09.838986 +0300 +03	deployed	booking-service-0.1.0	1.0        
+
+$ kubectl get endpoints booking-service
+NAME              ENDPOINTS                                            AGE
+booking-service   10.244.0.17:8080,10.244.0.18:8080,10.244.0.19:8080   7m35s

@@ -1,0 +1,73 @@
+# Вход в mesh: ingress gateway Istio принимает HTTP на 80 порту
+apiVersion: networking.istio.io/v1
+kind: Gateway
+metadata:
+  name: booking-gateway
+  namespace: default
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      hosts:
+        - "*"
+---
+# Маршрутизация booking-service: feature flag → canary 90/10 → fallback v1 → v2
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: booking-service
+  namespace: default
+spec:
+  hosts:
+    - "*"
+  gateways:
+    - booking-gateway
+  http:
+    # 1. Feature flag. Заголовок x-booking-route выставляет EnvoyFilter (envoy-filter.yaml)
+    #    для запросов с X-Feature-Enabled: true. Такие запросы всегда идут в v2
+    - name: feature-flag-v2
+      match:
+        - headers:
+            x-booking-route:
+              exact: v2
+      route:
+        - destination:
+            host: booking-service.default.svc.cluster.local
+            subset: v2
+            port:
+              number: 80
+      timeout: 10s
+      retries:
+        attempts: 3
+        perTryTimeout: 2s
+        retryOn: 5xx,gateway-error,connect-failure,refused-stream,reset
+
+    # 2. Canary release: 90% на стабильную версию, 10% на v2.
+    #    Subset primary — это v1 с fallback на v2 (failoverPriority в destination-rule.yaml):
+    #    если v1 недоступен или отвечает ошибками, его доля трафика уходит в v2
+    - name: canary
+      route:
+        - destination:
+            host: booking-service.default.svc.cluster.local
+            subset: primary
+            port:
+              number: 80
+          weight: 90
+        - destination:
+            host: booking-service.default.svc.cluster.local
+            subset: v2
+            port:
+              number: 80
+          weight: 10
+      timeout: 10s
+      # Retry: повтор при 5xx и сетевых ошибках. retryRemoteLocalities разрешает повтору
+      # уйти на следующий приоритет (v2) — так ошибка v1 сразу подменяется ответом v2
+      retries:
+        attempts: 3
+        perTryTimeout: 2s
+        retryOn: 5xx,gateway-error,connect-failure,refused-stream,reset
+        retryRemoteLocalities: true

@@ -1,0 +1,26 @@
+# Staging: одна реплика, фича X включена для проверки до выкатки в prod
+replicaCount: 1
+
+image:
+  name: booking-service
+  tag: latest
+  pullPolicy: Never
+
+featureFlags:
+  ENABLE_FEATURE_X: true
+
+env:
+  - name: APP_ENV
+    value: staging
+  - name: APP_VERSION
+    value: 1.0.0-staging
+  - name: SHUTDOWN_DELAY
+    value: 2s
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 32Mi
+  limits:
+    cpu: 200m
+    memory: 64Mi

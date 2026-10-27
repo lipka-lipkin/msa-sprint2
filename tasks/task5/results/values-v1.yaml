@@ -1,0 +1,33 @@
+# v1 — основная (стабильная) версия booking-service.
+# Получает 90% трафика; фича X выключена, заголовок X-Feature-Enabled игнорируется.
+version: v1
+replicaCount: 1
+
+image:
+  name: booking-service
+  tag: latest
+  pullPolicy: Never
+
+service:
+  # Общий Service booking-service создаёт релиз v1
+  create: true
+
+featureFlags:
+  ENABLE_FEATURE_X: false
+
+env:
+  - name: APP_ENV
+    value: prod
+  - name: FEATURE_FLAGS_FROM_HEADER
+    value: "false"
+  # /chaos/fail для проверки fallback и circuit breaking (check-fallback.sh)
+  - name: CHAOS_ENABLED
+    value: "true"
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 32Mi
+  limits:
+    cpu: 200m
+    memory: 64Mi

@@ -1,0 +1,32 @@
+
+===== booking-history-db: SELECT * FROM booking_history ORDER BY booked_at =====
+ booking_id |               event_id               |   user_id   |   hotel_id   | promo_code | discount_percent | price |           booked_at           |       event_occurred_at       |          received_at          
+------------+--------------------------------------+-------------+--------------+------------+------------------+-------+-------------------------------+-------------------------------+-------------------------------
+   10000018 | bc5fbab3-6d85-488b-9c80-342418974bef | test-user-3 | test-hotel-1 |            |                0 |    80 | 2026-10-24 17:45:43.380373+00 | 2026-10-24 17:45:43.38284+00  | 2026-10-24 17:45:43.865598+00
+   10000019 | cf0acf73-3ddf-4efd-b31b-42bb662f5014 | test-user-2 | test-hotel-1 | TESTCODE1  |               10 |    90 | 2026-10-24 17:45:43.516369+00 | 2026-10-24 17:45:43.517702+00 | 2026-10-24 17:45:43.874914+00
+   10000020 | 3f530413-ad62-4231-bd73-bc5479b7ab89 | test-user-2 | test-hotel-1 |            |                0 |   100 | 2026-10-24 17:45:43.695122+00 | 2026-10-24 17:45:43.696765+00 | 2026-10-24 17:45:43.879761+00
+   10000021 | 81967084-6af6-463a-a6ca-e7397df11194 | test-user-2 | test-hotel-1 | TESTCODE1  |               10 |    90 | 2026-10-24 17:45:44.858042+00 | 2026-10-24 17:45:44.859502+00 | 2026-10-24 17:45:44.878647+00
+(4 rows)
+
+
+===== booking-history-db: SELECT * FROM user_booking_stats =====
+   user_id   | bookings_count | total_price | total_discount | promo_bookings_count |       first_booking_at        |        last_booking_at        
+-------------+----------------+-------------+----------------+----------------------+-------------------------------+-------------------------------
+ test-user-2 |              3 |         280 |             20 |                    2 | 2026-10-24 17:45:43.516369+00 | 2026-10-24 17:45:44.858042+00
+ test-user-3 |              1 |          80 |              0 |                    0 | 2026-10-24 17:45:43.380373+00 | 2026-10-24 17:45:43.380373+00
+(2 rows)
+
+
+===== booking-history-db: SELECT * FROM hotel_booking_stats =====
+   hotel_id   | bookings_count | total_price | total_discount | promo_bookings_count |        last_booking_at        
+--------------+----------------+-------------+----------------+----------------------+-------------------------------
+ test-hotel-1 |              4 |         360 |             20 |                    2 | 2026-10-24 17:45:44.858042+00
+(1 row)
+
+
+===== booking-history-db: SELECT * FROM daily_booking_stats =====
+    day     | bookings_count | total_price | total_discount | promo_bookings_count 
+------------+----------------+-------------+----------------+----------------------
+ 2026-10-24 |              4 |         360 |             20 |                    2
+(1 row)
+

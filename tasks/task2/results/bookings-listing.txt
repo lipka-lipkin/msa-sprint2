@@ -1,0 +1,165 @@
+
+===== REST монолита: GET /api/bookings?userId=test-user-2 (прокси → gRPC ListBookings) =====
+[
+  {
+    "id": 13,
+    "userId": "test-user-2",
+    "hotelId": "test-hotel-1",
+    "promoCode": "TESTCODE1",
+    "discountPercent": 10.0,
+    "price": 90.0,
+    "createdAt": "2026-10-24T17:45:42.816237Z"
+  },
+  {
+    "id": 10000019,
+    "userId": "test-user-2",
+    "hotelId": "test-hotel-1",
+    "promoCode": "TESTCODE1",
+    "discountPercent": 10.0,
+    "price": 90.0,
+    "createdAt": "2026-10-24T17:45:43.516369Z"
+  },
+  {
+    "id": 10000020,
+    "userId": "test-user-2",
+    "hotelId": "test-hotel-1",
+    "promoCode": "",
+    "discountPercent": 0.0,
+    "price": 100.0,
+    "createdAt": "2026-10-24T17:45:43.695122Z"
+  },
+  {
+    "id": 10000021,
+    "userId": "test-user-2",
+    "hotelId": "test-hotel-1",
+    "promoCode": "TESTCODE1",
+    "discountPercent": 10.0,
+    "price": 90.0,
+    "createdAt": "2026-10-24T17:45:44.858042Z"
+  }
+]
+
+===== REST монолита: GET /api/bookings?userId=test-user-3 =====
+[
+  {
+    "id": 14,
+    "userId": "test-user-3",
+    "hotelId": "test-hotel-1",
+    "promoCode": "",
+    "discountPercent": 0.0,
+    "price": 80.0,
+    "createdAt": "2026-10-24T17:45:42.816237Z"
+  },
+  {
+    "id": 10000018,
+    "userId": "test-user-3",
+    "hotelId": "test-hotel-1",
+    "promoCode": "",
+    "discountPercent": 0.0,
+    "price": 80.0,
+    "createdAt": "2026-10-24T17:45:43.380373Z"
+  }
+]
+
+===== REST монолита: GET /api/bookings без userId (ограничение прокси p-o-y) =====
+{"timestamp":"2026-10-24T17:45:50.069+00:00","status":500,"error":"Internal Server Error","path":"/api/bookings"}
+HTTP 500
+Причина в логе монолита:
+java.lang.NullPointerException: null
+	at com.hotelio.proto.booking.BookingListRequest$Builder.setUserId(BookingListRequest.java:449) ~[p-o-y-1.0.0.jar!/:na]
+	at com.hotelio.GrpcBookingService.listAll(GrpcBookingService.java:26) ~[p-o-y-1.0.0.jar!/:na]
+	at com.hotelio.monolith.controller.BookingController.listBookings(BookingController.java:23) ~[!/:1.0.0]
+
+===== gRPC booking-service: ListBookings {} (все бронирования) =====
+{
+  "bookings": [
+    {
+      "id": "13",
+      "user_id": "test-user-2",
+      "hotel_id": "test-hotel-1",
+      "promo_code": "TESTCODE1",
+      "discount_percent": 10,
+      "price": 90,
+      "created_at": "2026-10-24T17:45:42.816237Z"
+    },
+    {
+      "id": "14",
+      "user_id": "test-user-3",
+      "hotel_id": "test-hotel-1",
+      "price": 80,
+      "created_at": "2026-10-24T17:45:42.816237Z"
+    },
+    {
+      "id": "10000018",
+      "user_id": "test-user-3",
+      "hotel_id": "test-hotel-1",
+      "price": 80,
+      "created_at": "2026-10-24T17:45:43.380373Z"
+    },
+    {
+      "id": "10000019",
+      "user_id": "test-user-2",
+      "hotel_id": "test-hotel-1",
+      "promo_code": "TESTCODE1",
+      "discount_percent": 10,
+      "price": 90,
+      "created_at": "2026-10-24T17:45:43.516369Z"
+    },
+    {
+      "id": "10000020",
+      "user_id": "test-user-2",
+      "hotel_id": "test-hotel-1",
+      "price": 100,
+      "created_at": "2026-10-24T17:45:43.695122Z"
+    },
+    {
+      "id": "10000021",
+      "user_id": "test-user-2",
+      "hotel_id": "test-hotel-1",
+      "promo_code": "TESTCODE1",
+      "discount_percent": 10,
+      "price": 90,
+      "created_at": "2026-10-24T17:45:44.858042Z"
+    }
+  ]
+}
+
+===== gRPC booking-service: ListBookings {"user_id": "test-user-2"} =====
+{
+  "bookings": [
+    {
+      "id": "13",
+      "user_id": "test-user-2",
+      "hotel_id": "test-hotel-1",
+      "promo_code": "TESTCODE1",
+      "discount_percent": 10,
+      "price": 90,
+      "created_at": "2026-10-24T17:45:42.816237Z"
+    },
+    {
+      "id": "10000019",
+      "user_id": "test-user-2",
+      "hotel_id": "test-hotel-1",
+      "promo_code": "TESTCODE1",
+      "discount_percent": 10,
+      "price": 90,
+      "created_at": "2026-10-24T17:45:43.516369Z"
+    },
+    {
+      "id": "10000020",
+      "user_id": "test-user-2",
+      "hotel_id": "test-hotel-1",
+      "price": 100,
+      "created_at": "2026-10-24T17:45:43.695122Z"
+    },
+    {
+      "id": "10000021",
+      "user_id": "test-user-2",
+      "hotel_id": "test-hotel-1",
+      "promo_code": "TESTCODE1",
+      "discount_percent": 10,
+      "price": 90,
+      "created_at": "2026-10-24T17:45:44.858042Z"
+    }
+  ]
+}

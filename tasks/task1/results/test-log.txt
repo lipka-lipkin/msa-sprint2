@@ -1,0 +1,141 @@
+Задание 1: проверка API и кодовой базы монолита Hotelio
+Дата: 2026-10-27 07:04:50 UTC; стенд: tasks/task1/docker-compose.yml
+
+===== docker ps =====
+NAMES              IMAGE            STATUS         PORTS
+hotelio-db         postgres:15      Up 2 minutes   0.0.0.0:5432->5432/tcp
+hotelio-monolith   task1-monolith   Up 2 minutes   0.0.0.0:8084->8080/tcp
+
+===== Старт монолита (docker logs hotelio-monolith) =====
+2026-10-27T07:02:25.397Z  INFO 1 --- [           main] c.hotelio.monolith.MonolithApplication   : Started MonolithApplication in 9.818 seconds (process running for 12.517)
+➡️  BookingService beans:
+    - bookingService: class com.hotelio.monolith.service.BookingService
+--- ddl-auto: create — при каждом старте схема удаляется и создаётся заново (П-3):
+Hibernate: drop table if exists app_user cascade
+Hibernate: drop table if exists booking cascade
+Hibernate: drop table if exists hotel cascade
+Hibernate: drop table if exists promo_code cascade
+Hibernate: drop table if exists review cascade
+Hibernate: create table app_user (active boolean not null, blacklisted boolean not null, city varchar(255), email varchar(255), id varchar(255) not null, name varchar(255), status varchar(255), primary key (id))
+Hibernate: create table booking (discount_percent float(53), price float(53) not null, created_at timestamp(6) with time zone, id bigserial not null, hotel_id varchar(255), promo_code varchar(255), user_id varchar(255), primary key (id))
+Hibernate: create table hotel (fully_booked boolean not null, operational boolean not null, rating float(53) not null, description varchar(1000), city varchar(255), id varchar(255) not null, primary key (id))
+Hibernate: create table promo_code (discount float(53) not null, expired boolean not null, valid_until date, vip_only boolean not null, code varchar(255) not null, description varchar(255), primary key (code))
+Hibernate: create table review (created_at date, rating integer not null, text varchar(2000), hotel_id varchar(255), id varchar(255) not null, user_id varchar(255), primary key (id))
+
+===== Регрессионные тесты: test/regress.sh (исходная версия из 7f244f9) =====
+🏁 Регрессионный тест до миграции Hotelio
+🧪 Проверка подключения к БД...
+🧪 Загрузка фикстур...
+DELETE 4
+DELETE 3
+DELETE 12
+DELETE 3
+DELETE 7
+INSERT 0 4
+INSERT 0 3
+INSERT 0 12
+INSERT 0 3
+INSERT 0 2
+🧪 Выполнение HTTP-тестов...
+
+Тесты пользователей...
+✅ Получение test-user-1 по ID работает
+✅ Статус test-user-1: ACTIVE
+✅ test-user-1 в блэклисте
+✅ test-user-1 активен
+✅ test-user-1 не авторизован (в блэклисте)
+✅ test-user-3 — VIP-пользователь
+✅ test-user-2 авторизован
+
+Тесты отелей...
+✅ test-hotel-1 получен по ID
+✅ test-hotel-1 работает
+✅ test-hotel-3 не работает
+✅ test-hotel-2 полностью забронирован
+✅ Поиск отелей в Сеуле работает
+✅ Топ-отели в Сеуле загружены
+
+Тесты ревью...
+✅ Отзывы test-hotel-1 найдены
+✅ test-hotel-1 признан надёжным
+✅ test-hotel-3 НЕ признан надёжным (ожидаемо)
+
+Тесты промокодов...
+✅ Промокод TESTCODE1 найден
+✅ VIP-промо доступен VIP
+✅ VIP-промо недоступен обычному
+✅ Обычный промо доступен
+✅ Истекший промо недоступен
+✅ POST /validate промо прошёл
+
+Тесты бронирования...
+✅ Все бронирования получены
+✅ Бронирования test-user-2 найдены
+✅ Бронирование прошло (без промо)
+✅ Бронирование с промо прошло
+✅ Отклонено: неактивный пользователь
+✅ Отклонено: недоверенный отель
+✅ Отклонено: отель полностью забронирован
+✅ Все HTTP-тесты пройдены!
+--- Итого: успешных проверок 29, неуспешных 0
+
+===== Кодовая база: зависимости между модулями (поля-зависимости сервисов) =====
+AppUserService → AppUserRepository
+BookingService → BookingRepository,PromoCodeService,ReviewService,AppUserService,HotelService
+HotelService → HotelRepository
+PromoCodeService → PromoCodeRepository,AppUserService
+ReviewService → ReviewRepository
+--- Кто использует BookingService (входящие зависимости; MonolithApplication только печатает бины):
+com/hotelio/monolith/MonolithApplication.java
+com/hotelio/monolith/controller/BookingController.java
+--- ReviewController обращается к репозиторию в обход сервиса (П-16):
+27:        return reviewRepository.findByHotelId(hotelId);
+
+===== Кодовая база: конфигурация и модель данных =====
+--- application.yml:
+8:      ddl-auto: create
+9:    show-sql: true
+--- Поля сущности Hotel (в architecture/readme.md есть name и pricePerNight, в коде их нет — П-16):
+    private String id;
+    private boolean operational;
+    private boolean fullyBooked;
+    private String city;
+    private double rating;
+    private String description;
+--- PromoCodeService проверяет только флаг expired, validUntil не используется (П-10):
+22:                .filter(p -> !p.isExpired())
+--- BookingService: скидка вычитается как абсолютная сумма, createdAt не заполняется (П-8, П-9):
+51:        double finalPrice = basePrice - discount;
+58:        booking.setDiscountPercent(discount);
+    вызовов setCreatedAt в BookingService: 0
+
+===== API: подтверждение проблем из ADR на работающем монолите =====
+П-8. VIP (база 80) + VIP-промокод на 20 → цена 60, а не 64: скидка вычитается как сумма
+$ curl -X POST 'http://localhost:8084/api/bookings?userId=test-user-3&hotelId=test-hotel-1&promoCode=TESTCODE-VIP'
+{"id":19,"userId":"test-user-3","hotelId":"test-hotel-1","promoCode":"TESTCODE-VIP","discountPercent":20.0,"price":60.0,"createdAt":null}
+
+П-9, П-11. Несуществующий промокод молча игнорируется, но сохраняется в брони; createdAt = null
+$ curl -X POST 'http://localhost:8084/api/bookings?userId=test-user-2&hotelId=test-hotel-1&promoCode=NOPE'
+{"id":20,"userId":"test-user-2","hotelId":"test-hotel-1","promoCode":"NOPE","discountPercent":0.0,"price":100.0,"createdAt":null}
+
+П-12. Бизнес-ошибка (несуществующий пользователь) → HTTP 500 без описания причины
+$ curl -X POST 'http://localhost:8084/api/bookings?userId=ghost&hotelId=test-hotel-1'
+{"timestamp":"2026-10-27T07:04:52.878+00:00","status":500,"error":"Internal Server Error","path":"/api/bookings"}
+HTTP 500
+
+П-10. Промокод с valid_until в прошлом, но expired=false, считается действительным
+$ curl 'http://localhost:8084/api/promos/PAST2020/valid'   # valid_until = 2020-01-01
+true
+
+П-16. В ответе об отеле нет name и pricePerNight из документации
+$ curl 'http://localhost:8084/api/hotels/test-hotel-1'
+{"id":"test-hotel-1","operational":true,"fullyBooked":false,"city":"Seoul","rating":4.7,"description":"Modern hotel in Seoul downtown with spa and skybar."}
+
+П-13. SQL-запросы на одно бронирование с промокодом (повторные чтения пользователя скрывает кэш Hibernate)
+SQL-запросов: 5
+Hibernate: select au1_0.id,au1_0.active,au1_0.blacklisted,au1_0.city,au1_0.email,au1_0.name,au1_0.status
+Hibernate: select h1_0.id,h1_0.city,h1_0.description,h1_0.fully_booked,h1_0.operational,h1_0.rating
+Hibernate: select r1_0.id,r1_0.created_at,r1_0.hotel_id,r1_0.rating,r1_0.text,r1_0.user_id
+Hibernate: select pc1_0.code,pc1_0.description,pc1_0.discount,pc1_0.expired,pc1_0.valid_until,pc1_0.vip_only
+Hibernate: insert into booking (created_at,discount_percent,hotel_id,price,promo_code,user_id)
+В коде за то же бронирование: AppUserService вызывается до 4 раз, HotelService — 2, ReviewService и PromoCodeService — по 1

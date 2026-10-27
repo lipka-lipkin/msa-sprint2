@@ -1,0 +1,40 @@
+$ ./check-istio.sh   # 2026-10-26 17:16:47 UTC
+▶️ Проверка установки Istio...
+NAME                                    READY   STATUS    RESTARTS   AGE
+istio-egressgateway-85fb7b485-xgs9x     1/1     Running   0          11m
+istio-ingressgateway-688d5748ff-ztvvt   1/1     Running   0          11m
+istiod-6b6fd5bdb6-67pkq                 1/1     Running   0          12m
+client version: 1.31.3
+control plane version: 1.31.3
+data plane version: 1.31.3 (4 proxies)
+
+▶️ Проверка Istio инъекции в default namespace...
+"enabled"
+
+▶️ Поды booking-service: у каждого должен быть sidecar istio-proxy
+NAME                                  READY   STATUS    RESTARTS   AGE     VERSION
+booking-service-v1-68d54bd6dd-tfz5m   2/2     Running   0          61s     v1
+booking-service-v2-c8c866c86-6wv96    2/2     Running   0          3m50s   v2
+[PASS] booking-service-v1-68d54bd6dd-tfz5m: booking-service istio-init istio-proxy
+[PASS] booking-service-v2-c8c866c86-6wv96: booking-service istio-init istio-proxy
+
+▶️ Istio-конфигурация booking-service
+NAME                                          AGE
+gateway.networking.istio.io/booking-gateway   3m45s
+
+NAME                                                 GATEWAYS              HOSTS   AGE
+virtualservice.networking.istio.io/booking-service   ["booking-gateway"]   ["*"]   3m45s
+
+NAME                                                  HOST                                        AGE
+destinationrule.networking.istio.io/booking-service   booking-service.default.svc.cluster.local   3m45s
+NAME                   AGE
+booking-feature-flag   3m45s
+
+▶️ Синхронизация Envoy с istiod
+NAME                                                   CLUSTER        ISTIOD                      VERSION     SUBSCRIBED TYPES
+booking-service-v1-68d54bd6dd-tfz5m.default            Kubernetes     istiod-6b6fd5bdb6-67pkq     1.31.3      4 (CDS,LDS,EDS,RDS)
+booking-service-v2-c8c866c86-6wv96.default             Kubernetes     istiod-6b6fd5bdb6-67pkq     1.31.3      4 (CDS,LDS,EDS,RDS)
+istio-egressgateway-85fb7b485-xgs9x.istio-system       Kubernetes     istiod-6b6fd5bdb6-67pkq     1.31.3      3 (CDS,LDS,EDS)
+istio-ingressgateway-688d5748ff-ztvvt.istio-system     Kubernetes     istiod-6b6fd5bdb6-67pkq     1.31.3      4 (CDS,LDS,EDS,RDS)
+[PASS] Istio установлен, sidecar внедрён во все поды booking-service
+exit code: 0

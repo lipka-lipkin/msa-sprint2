@@ -1,0 +1,15 @@
+$ curl -i http://localhost:8080/ping
+HTTP/1.1 200 OK
+X-Feature-X: disabled
+Date: Mon, 26 Oct 2026 15:37:45 GMT
+Content-Length: 4
+Content-Type: text/plain; charset=utf-8
+
+pong
+
+$ curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/feature
+404
+
+$ curl http://localhost:8080/info
+{"environment":"prod","features":{"ENABLE_FEATURE_X":false},"hostname":"booking-service-7cc4d4588f-tdn29","service":"booking-service","version":"1.0.0"}
+

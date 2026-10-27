@@ -1,0 +1,22 @@
+===== STAGING (values-staging.yaml, ENABLE_FEATURE_X=true)
+$ kubectl get pods,svc -l app=booking-service -o wide
+NAME                                   READY   STATUS    RESTARTS   AGE   IP           NODE       NOMINATED NODE   READINESS GATES
+pod/booking-service-5945497d8f-vzdlc   1/1     Running   0          17s   10.244.0.7   minikube   <none>           <none>
+
+NAME                      TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)   AGE    SELECTOR
+service/booking-service   ClusterIP   10.110.85.135   <none>        80/TCP    104s   app=booking-service
+
+$ curl -i http://localhost:8080/ping
+HTTP/1.1 200 OK
+X-Feature-X: enabled
+Date: Mon, 26 Oct 2026 15:31:57 GMT
+Content-Length: 4
+Content-Type: text/plain; charset=utf-8
+
+pong
+
+$ curl http://localhost:8080/feature
+Feature X is enabled!
+
+$ curl http://localhost:8080/info
+{"environment":"staging","features":{"ENABLE_FEATURE_X":true},"hostname":"booking-service-5945497d8f-vzdlc","service":"booking-service","version":"1.0.0-staging"}

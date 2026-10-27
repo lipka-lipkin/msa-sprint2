@@ -1,0 +1,20 @@
+$ ./check-feature-flag.sh   # 2026-10-26 17:16:53 UTC
+▶️ Проверка Feature Flag (X-Feature-Enabled: true)...
+HTTP/1.1 200 OK
+x-app-version: v2
+x-feature-x: enabled
+x-feature-flag-filter: applied
+
+[INFO] 20 запросов с X-Feature-Enabled: true:
+           20 v2
+[PASS] Все запросы с флагом ушли в v2 (EnvoyFilter → x-booking-route: v2 → VirtualService)
+[PASS] GET /feature с флагом → Feature X is enabled! (version v2)
+[INFO] GET /feature без флага, 20 запросов (HTTP-коды):
+           20 404
+[PASS] Без флага фича недоступна ни в v1, ни в v2
+[INFO] 20 запросов с поддельным x-booking-route: v2 (без флага):
+           17 v1
+            3 v2
+[PASS] Подделка x-booking-route игнорируется — работает обычный canary
+[PASS] Feature flag работает
+exit code: 0

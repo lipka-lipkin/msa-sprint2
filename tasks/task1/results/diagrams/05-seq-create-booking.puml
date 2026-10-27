@@ -1,0 +1,54 @@
+@startuml 05-seq-create-booking
+title Создание бронирования после выноса Booking (переходное состояние)
+autonumber
+skinparam responseMessageBelowArrow true
+
+actor "Клиент" as client
+box "hotelio-monolith" #F2F2F2
+  participant "BookingController" as ctrl
+  participant "GrpcBookingService\n(@Primary, p-o-y)" as proxy
+  participant "REST /api/users, /hotels,\n/reviews, /promos" as legacy
+end box
+box "booking-service" #E8F5E9
+  participant "gRPC BookingService" as bs
+  participant "MonolithClient (ACL)" as acl
+  database "booking-db" as bdb
+  participant "Outbox relay" as relay
+end box
+queue "Kafka\nbooking.events" as kafka
+
+client -> ctrl : POST /api/bookings?userId&hotelId&promoCode
+ctrl -> proxy : createBooking(userId, hotelId, promoCode)
+proxy -> bs : CreateBooking(BookingRequest)\n(p-o-y не задаёт deadline: таймаут в Istio)
+
+group Валидация (правила 1:1 с монолитом, один вызов на ресурс вместо 8)
+  bs -> acl : getUser(userId)
+  acl -> legacy : GET /api/users/{userId}
+  legacy --> acl : {active, blacklisted, status}
+  bs -> acl : getHotel(hotelId)
+  acl -> legacy : GET /api/hotels/{hotelId}
+  legacy --> acl : {operational, fullyBooked}
+  bs -> acl : isTrusted(hotelId)
+  acl -> legacy : GET /api/reviews/hotel/{hotelId}/trusted
+  legacy --> acl : true / false
+  opt promoCode задан
+    bs -> acl : validatePromo(code, userId)
+    acl -> legacy : POST /api/promos/validate?code&userId
+    legacy --> acl : 200 {discount} / 400
+  end
+end
+
+alt Проверка не пройдена (неактивен, в чёрном списке, отель не работает, не trusted, нет мест)
+  bs --> proxy : gRPC FAILED_PRECONDITION
+  proxy --> ctrl : StatusRuntimeException
+  ctrl --> client : HTTP 500 (как в монолите)
+else Проверки пройдены
+  bs -> bs : basePrice = VIP ? 80 : 100\nfinalPrice = basePrice - discount
+  bs -> bdb : BEGIN; INSERT booking; INSERT outbox(BookingCreated); COMMIT
+  bs --> proxy : BookingResponse(id: числовой, created_at: ISO-8601 UTC)
+  proxy --> ctrl : Booking
+  ctrl --> client : 200 OK (JSON как раньше)
+  relay -> bdb : читает новые записи outbox
+  relay -> kafka : BookingCreated
+end
+@enduml
