@@ -1,0 +1,39 @@
+$ ./check-fallback.sh   # 2026-10-26 17:16:55 UTC
+▶️ Testing fallback route...
+
+▶️ Сценарий 1: гасим под v1
+deployment.apps/booking-service-v1 scaled
+pod/booking-service-v1-68d54bd6dd-tfz5m condition met
+NAME                                 READY   STATUS    RESTARTS   AGE    VERSION
+booking-service-v2-c8c866c86-6wv96   2/2     Running   0          4m4s   v2
+[INFO] v1 погашен: 30 запросов:
+           30 v2
+[PASS] v1 погашен: все 30 запросов успешно обслужил v2
+pong — Fallback route working
+[INFO] Возвращаем v1
+deployment.apps/booking-service-v1 scaled
+Waiting for deployment "booking-service-v1" rollout to finish: 0 of 1 updated replicas are available...
+deployment "booking-service-v1" successfully rolled out
+
+▶️ Сценарий 2: v1 отвечает ошибками (POST /chaos/fail внутри пода v1)
+{"failing":true}
+
+[INFO] v1 отвечает 503: 30 запросов:
+           30 v2
+[PASS] v1 отвечает 503: все 30 запросов успешно обслужил v2
+[INFO] Ответы v1 по access-логу его sidecar (ошибки скрыты от клиента retry и outlier detection):
+            3 "GET /ping HTTP/1.1" 503
+[INFO] Состояние хоста v1 в ingress gateway (circuit breaker):
+         outbound|80|primary|booking-service.default.svc.cluster.local::10.244.0.27:8080::health_flags::/failed_outlier_check
+[PASS] Outlier detection исключил v1 из балансировки
+
+[INFO] Восстанавливаем v1 и ждём окончания исключения (baseEjectionTime)
+{"failing":false}
+
+         outbound|80|primary|booking-service.default.svc.cluster.local::10.244.0.27:8080::health_flags::healthy
+[INFO] После восстановления, 20 запросов:
+           19 v1
+            1 v2
+[PASS] v1 снова получает трафик
+[PASS] Fallback v1 → v2 работает
+exit code: 0

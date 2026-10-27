@@ -1,0 +1,19 @@
+time="2026-10-26T11:10:22+03:00" level=warning msg="/Users/lipka_lipkin/Documents/yandexPracticum/msa-sprint2/tasks/task3/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+hotel-subgraph  | 2026-10-26T07:58:24.941434589Z Enabling inline tracing for this subgraph. To disable, use ApolloServerPluginInlineTraceDisabled.
+hotel-subgraph  | 2026-10-26T07:58:24.946981256Z ✅ Hotel subgraph ready at http://localhost:4002/ (hotels from http://hotelio-monolith:8080)
+hotel-subgraph  | 2026-10-26T07:58:33.896422344Z [hotel-subgraph] GET /api/hotels/demo-hotel-busan -> 200 (1850 ms)
+hotel-subgraph  | 2026-10-26T07:58:33.899162052Z [hotel-subgraph] GET /api/hotels/test-hotel-1 -> 200 (1887 ms)
+hotel-subgraph  | 2026-10-26T07:58:45.043846668Z [hotel-subgraph] GET /api/hotels/test-hotel-1 -> 200 (261 ms)
+hotel-subgraph  | 2026-10-26T07:58:45.054744251Z [hotel-subgraph] GET /api/hotels/nope -> 404 (261 ms)
+hotel-subgraph  | 2026-10-26T08:03:49.822816212Z [hotel-subgraph] GET /api/hotels/test-hotel-1 -> 200 (1540 ms)
+hotel-subgraph  | 2026-10-26T08:03:49.831443170Z [hotel-subgraph] GET /api/hotels/demo-hotel-busan -> 200 (1279 ms)
+hotel-subgraph  | 2026-10-26T08:08:30.767746342Z [hotel-subgraph] GET /api/hotels/demo-hotel-busan -> 200 (840 ms)
+hotel-subgraph  | 2026-10-26T08:08:30.770219592Z [hotel-subgraph] GET /api/hotels/test-hotel-1 -> 200 (886 ms)
+booking-subgraph  | 2026-10-26T08:08:02.706198176Z [booking-subgraph] gRPC channel to booking-service:9090 is ready
+booking-subgraph  | 2026-10-26T08:08:02.840988926Z Enabling inline tracing for this subgraph. To disable, use ApolloServerPluginInlineTraceDisabled.
+booking-subgraph  | 2026-10-26T08:08:02.856962218Z ✅ Booking subgraph ready at http://localhost:4001/ (booking-service gRPC at booking-service:9090)
+booking-subgraph  | 2026-10-26T08:08:29.836788425Z [booking-subgraph] bookingsByUser userid=user1 requested=user1 decision=ALLOW bookings=2
+booking-subgraph  | 2026-10-26T08:09:12.757080292Z [booking-subgraph] bookingsByUser userid=user2 requested=user1 decision=DENY reason=foreign bookings
+booking-subgraph  | 2026-10-26T08:10:19.914551295Z [booking-subgraph] bookingsByUser userid=<absent> requested=user1 decision=DENY reason=missing userid header
+apollo-gateway    | 2026-10-26T07:58:31.143176592Z The `serviceList` option is deprecated and will be removed in a future version of `@apollo/gateway`. Please migrate to its replacement `IntrospectAndCompose`. More information on `IntrospectAndCompose` can be found in the documentation.
+apollo-gateway    | 2026-10-26T07:58:31.466021634Z 🚀 Gateway ready at http://localhost:4000/

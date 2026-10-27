@@ -1,0 +1,59 @@
+# Политики трафика booking-service: circuit breaking, бюджет retry, версии (subsets) и fallback.
+# Сами повторы (attempts/retryOn) в Istio задаются в VirtualService (virtual-service.yaml),
+# здесь — ограничения, которые защищают сервис от лавины повторов и больных подов
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata:
+  name: booking-service
+  namespace: default
+spec:
+  host: booking-service.default.svc.cluster.local
+  trafficPolicy:
+    # Circuit breaker по ресурсам: сверх лимитов Envoy сразу отвечает 503 (overflow),
+    # не нагружая сервис
+    connectionPool:
+      tcp:
+        maxConnections: 100
+        connectTimeout: 2s
+      http:
+        http1MaxPendingRequests: 50
+        http2MaxRequests: 100
+        # Не больше 3 одновременных повторов на весь кластер — защита от retry storm
+        maxRetries: 3
+    # Circuit breaker по ошибкам: под, который 3 раза подряд ответил 5xx, исключается
+    # из балансировки на 30 с (с ростом при повторах)
+    outlierDetection:
+      consecutive5xxErrors: 3
+      consecutiveGatewayErrors: 3
+      interval: 5s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 100
+      # 0 — не включать panic mode: исключённые поды действительно не получают трафик
+      minHealthPercent: 0
+  subsets:
+    - name: v1
+      labels:
+        version: v1
+    - name: v2
+      labels:
+        version: v2
+    # Fallback: все поды сервиса, но v1 — приоритет 0, остальные (v2) — приоритет 1.
+    # Пока v1 здоров, весь трафик subset идёт в v1; если v1 нет или он исключён
+    # outlier detection, трафик переходит на v2
+    - name: primary
+      labels:
+        app: booking-service
+      trafficPolicy:
+        loadBalancer:
+          simple: ROUND_ROBIN
+          localityLbSetting:
+            enabled: true
+            failoverPriority:
+              - "version=v1"
+        outlierDetection:
+          consecutive5xxErrors: 3
+          consecutiveGatewayErrors: 3
+          interval: 5s
+          baseEjectionTime: 30s
+          maxEjectionPercent: 100
+          minHealthPercent: 0

@@ -1,0 +1,72 @@
+$ kubectl get pods,svc -l app=booking-service -L version
+NAME                                      READY   STATUS    RESTARTS   AGE    VERSION
+pod/booking-service-v1-68d54bd6dd-rtgts   2/2     Running   0          64s    v1
+pod/booking-service-v2-c8c866c86-6wv96    2/2     Running   0          5m9s   v2
+
+NAME                      TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)   AGE     VERSION
+service/booking-service   ClusterIP   10.103.81.228   <none>        80/TCP    5m16s   
+
+$ helm list
+NAME              	NAMESPACE	REVISION	UPDATED                             	STATUS  	CHART                	APP VERSION
+booking-service-v1	default  	1       	2026-10-26 20:12:51.611107 +0300 +03	deployed	booking-service-0.1.0	1.0        
+booking-service-v2	default  	1       	2026-10-26 20:12:58.123904 +0300 +03	deployed	booking-service-0.1.0	1.0        
+
+$ kubectl get gateways,virtualservices,destinationrules -n default
+NAME                                          AGE
+gateway.networking.istio.io/booking-gateway   5m4s
+
+NAME                                                 GATEWAYS              HOSTS   AGE
+virtualservice.networking.istio.io/booking-service   ["booking-gateway"]   ["*"]   5m4s
+
+NAME                                                  HOST                                        AGE
+destinationrule.networking.istio.io/booking-service   booking-service.default.svc.cluster.local   5m4s
+
+$ kubectl get envoyfilters -n istio-system
+NAME                   AGE
+booking-feature-flag   5m4s
+
+$ istioctl analyze -n default
+
+✔ No validation issues found when analyzing namespace: default.
+
+# Fallback: приоритеты endpoints subset primary в ingress gateway (failoverPriority: version=v1)
+$ istioctl proxy-config endpoints istio-ingressgateway-688d5748ff-ztvvt.istio-system --cluster 'outbound|80|primary|booking-service.default.svc.cluster.local' -o json
+   10.244.0.27 priority=0 HEALTHY
+   10.244.0.25 priority=1 HEALTHY
+POD                                   IP            VERSION
+booking-service-v1-68d54bd6dd-rtgts   10.244.0.27   v1
+booking-service-v2-c8c866c86-6wv96    10.244.0.25   v2
+
+# Retry: политика маршрутов в ingress gateway
+  route=feature-flag-v2 match={"prefix": "/", "caseSensitive": true, "headers": [{"name": "x-booking-route", "stringMatch": {"exact": "v2"}}]}
+    destination: outbound|80|v2|booking-service.default.svc.cluster.local
+    retryOn=5xx,gateway-error,connect-failure,refused-stream,reset numRetries=3 perTryTimeout=2s retryPriority=None
+  route=canary match={"prefix": "/"}
+    destination: ['outbound|80|primary|booking-service.default.svc.cluster.local weight=90', 'outbound|80|v2|booking-service.default.svc.cluster.local weight=10']
+    retryOn=5xx,gateway-error,connect-failure,refused-stream,reset numRetries=3 perTryTimeout=2s retryPriority=envoy.retry_priorities.previous_priorities
+
+# Circuit breaker: пороги connectionPool и состояние хостов (pilot-agent request GET clusters)
+outbound|80|primary|booking-service.default.svc.cluster.local::default_priority::max_connections::100
+outbound|80|primary|booking-service.default.svc.cluster.local::default_priority::max_pending_requests::50
+outbound|80|primary|booking-service.default.svc.cluster.local::default_priority::max_requests::100
+outbound|80|primary|booking-service.default.svc.cluster.local::default_priority::max_retries::3
+outbound|80|primary|booking-service.default.svc.cluster.local::10.244.0.27:8080::rq_error::3
+outbound|80|primary|booking-service.default.svc.cluster.local::10.244.0.27:8080::rq_success::19
+outbound|80|primary|booking-service.default.svc.cluster.local::10.244.0.27:8080::health_flags::healthy
+outbound|80|primary|booking-service.default.svc.cluster.local::10.244.0.25:8080::rq_error::0
+outbound|80|primary|booking-service.default.svc.cluster.local::10.244.0.25:8080::rq_success::114
+outbound|80|primary|booking-service.default.svc.cluster.local::10.244.0.25:8080::health_flags::healthy
+
+# Access log ingress gateway (последние 12 записей): статус, upstream-хост, кластер, маршрут
+[2026-10-26T17:17:44.412Z] "GET /ping HTTP/1.1" 200 - via_upstream - "-" 0 4 1 0 "10.244.0.22" "curl/8.7.1" "1d112ce3-5ee3-9614-9e7d-37774e3d35ee" "localhost:9090" "10.244.0.27:8080" outbound|80|primary|booking-service.default.svc.cluster.local 10.244.0.22:41216 127.0.0.1:8080 127.0.0.1:42690 - canary
+[2026-10-26T17:17:44.453Z] "GET /ping HTTP/1.1" 200 - via_upstream - "-" 0 4 1 0 "10.244.0.22" "curl/8.7.1" "43f777af-ec1a-978a-802f-86e986cc27f9" "localhost:9090" "10.244.0.27:8080" outbound|80|primary|booking-service.default.svc.cluster.local 10.244.0.22:41216 127.0.0.1:8080 127.0.0.1:42704 - canary
+[2026-10-26T17:17:44.487Z] "GET /ping HTTP/1.1" 200 - via_upstream - "-" 0 4 0 0 "10.244.0.22" "curl/8.7.1" "1741f625-9187-97b3-9772-e9d4cb7f1adb" "localhost:9090" "10.244.0.27:8080" outbound|80|primary|booking-service.default.svc.cluster.local 10.244.0.22:41222 127.0.0.1:8080 127.0.0.1:42716 - canary
+[2026-10-26T17:17:44.518Z] "GET /ping HTTP/1.1" 200 - via_upstream - "-" 0 4 0 0 "10.244.0.22" "curl/8.7.1" "281a6c49-6798-9a6c-9141-59f56a02416a" "localhost:9090" "10.244.0.27:8080" outbound|80|primary|booking-service.default.svc.cluster.local 10.244.0.22:41222 127.0.0.1:8080 127.0.0.1:42722 - canary
+[2026-10-26T17:17:44.552Z] "GET /ping HTTP/1.1" 200 - via_upstream - "-" 0 4 0 0 "10.244.0.22" "curl/8.7.1" "485113b5-9399-9325-976e-c7eb3fceb221" "localhost:9090" "10.244.0.27:8080" outbound|80|primary|booking-service.default.svc.cluster.local 10.244.0.22:41222 127.0.0.1:8080 127.0.0.1:42726 - canary
+[2026-10-26T17:17:44.596Z] "GET /ping HTTP/1.1" 200 - via_upstream - "-" 0 4 0 0 "10.244.0.22" "curl/8.7.1" "600cc812-b55d-9f17-a379-cef87d0b16de" "localhost:9090" "10.244.0.27:8080" outbound|80|primary|booking-service.default.svc.cluster.local 10.244.0.22:41216 127.0.0.1:8080 127.0.0.1:42734 - canary
+[2026-10-26T17:17:44.634Z] "GET /ping HTTP/1.1" 200 - via_upstream - "-" 0 4 1 0 "10.244.0.22" "curl/8.7.1" "d8f5473b-8799-9349-9550-9a3f35dbe425" "localhost:9090" "10.244.0.27:8080" outbound|80|primary|booking-service.default.svc.cluster.local 10.244.0.22:41216 127.0.0.1:8080 127.0.0.1:42744 - canary
+[2026-10-26T17:17:44.682Z] "GET /ping HTTP/1.1" 200 - via_upstream - "-" 0 4 0 0 "10.244.0.22" "curl/8.7.1" "b4edeb97-bd80-973a-8ea2-deeda22079d1" "localhost:9090" "10.244.0.27:8080" outbound|80|primary|booking-service.default.svc.cluster.local 10.244.0.22:41222 127.0.0.1:8080 127.0.0.1:42754 - canary
+[2026-10-26T17:17:44.722Z] "GET /ping HTTP/1.1" 200 - via_upstream - "-" 0 4 1 0 "10.244.0.22" "curl/8.7.1" "c0db254d-988a-94cb-89ae-8532b321ecb5" "localhost:9090" "10.244.0.27:8080" outbound|80|primary|booking-service.default.svc.cluster.local 10.244.0.22:41216 127.0.0.1:8080 127.0.0.1:42756 - canary
+[2026-10-26T17:17:44.761Z] "GET /ping HTTP/1.1" 200 - via_upstream - "-" 0 4 0 0 "10.244.0.22" "curl/8.7.1" "5435df5b-f923-9bfa-927f-24c52ce9dea3" "localhost:9090" "10.244.0.27:8080" outbound|80|primary|booking-service.default.svc.cluster.local 10.244.0.22:41222 127.0.0.1:8080 127.0.0.1:42758 - canary
+[2026-10-26T17:17:44.794Z] "GET /ping HTTP/1.1" 200 - via_upstream - "-" 0 4 0 0 "10.244.0.22" "curl/8.7.1" "397cdbe3-86b3-9d51-aca0-b098d0681880" "localhost:9090" "10.244.0.27:8080" outbound|80|primary|booking-service.default.svc.cluster.local 10.244.0.22:41216 127.0.0.1:8080 127.0.0.1:42774 - canary
+[2026-10-26T17:17:44.824Z] "GET /ping HTTP/1.1" 200 - via_upstream - "-" 0 4 0 0 "10.244.0.22" "curl/8.7.1" "f4917b3e-9e5f-97ce-b5e6-b1a9b87604bd" "localhost:9090" "10.244.0.27:8080" outbound|80|primary|booking-service.default.svc.cluster.local 10.244.0.22:41222 127.0.0.1:8080 127.0.0.1:42782 - canary

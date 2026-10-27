@@ -1,0 +1,33 @@
+# v2 — новая (канареечная) версия booking-service.
+# Получает 10% трафика и все запросы с X-Feature-Enabled: true; фича X включается
+# этим заголовком на отдельный запрос. Также служит fallback для v1.
+version: v2
+replicaCount: 1
+
+image:
+  name: booking-service
+  tag: latest
+  pullPolicy: Never
+
+service:
+  # Service уже создан релизом v1
+  create: false
+
+featureFlags:
+  ENABLE_FEATURE_X: false
+
+env:
+  - name: APP_ENV
+    value: prod
+  - name: FEATURE_FLAGS_FROM_HEADER
+    value: "true"
+  - name: CHAOS_ENABLED
+    value: "true"
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 32Mi
+  limits:
+    cpu: 200m
+    memory: 64Mi

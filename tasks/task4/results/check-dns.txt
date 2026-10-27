@@ -1,0 +1,4 @@
+[INFO] Running in-cluster DNS test...
+[INFO] DNS: booking-service -> 10.110.85.135 (Service ClusterIP 10.110.85.135)
+[INFO] DNS Response: pong
+[PASS] DNS test succeeded

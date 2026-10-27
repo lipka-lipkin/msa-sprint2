@@ -1,0 +1,36 @@
+# Prod: несколько реплик, фича X выключена до решения бизнеса, больше ресурсов
+replicaCount: 3
+
+image:
+  name: booking-service
+  tag: latest
+  # В боевом кластере образ берётся из registry: IfNotPresent и неизменяемый тег
+  pullPolicy: Never
+
+featureFlags:
+  ENABLE_FEATURE_X: false
+
+env:
+  - name: APP_ENV
+    value: prod
+  - name: APP_VERSION
+    value: 1.0.0
+  - name: SHUTDOWN_DELAY
+    value: 5s
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 64Mi
+  limits:
+    cpu: 500m
+    memory: 128Mi
+
+readinessProbe:
+  httpGet:
+    path: /ping
+    port: http
+  initialDelaySeconds: 2
+  periodSeconds: 5
+  timeoutSeconds: 2
+  failureThreshold: 2

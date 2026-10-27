@@ -1,0 +1,33 @@
+@startuml 03-c4-transition
+!include <C4/C4_Container>
+
+AddElementTag("new", $bgColor="#2e7d32", $borderColor="#1b5e20", $legendText="новый элемент (шаг 1 Strangler Fig)")
+AddElementTag("legacy", $bgColor="#6d6d6d", $borderColor="#424242", $legendText="остаётся в монолите до следующих шагов")
+AddRelTag("new", $textColor="#2e7d32", $lineColor="#2e7d32", $legendText="новая интеграция")
+
+title Hotelio, переходное состояние: Booking вынесен из монолита (C4, контейнеры)
+
+Person(guest, "Гость")
+Container(clients, "Клиентские приложения", "Web, Mobile", "API для клиентов не меняется: те же REST-эндпоинты")
+
+System_Boundary(hotelio, "Hotelio") {
+  Container(monolith, "hotelio-monolith", "Java 17, Spring Boot", "REST-фасад /api/*. Users, Hotels, Reviews, Promos работают как раньше. BookingController вызывает GrpcBookingService (@Primary), если задан BOOKING_SERVICE_EXTERNAL_HOST", $tags="legacy")
+  ContainerDb(monolithDb, "PostgreSQL hotelio", "PostgreSQL 15", "app_user, hotel, review, promo_code. Таблица booking: только чтение и обратная синхронизация до вывода из эксплуатации", $tags="legacy")
+
+  Container(bookingSvc, "booking-service", "Java 17 / Spring Boot, gRPC", "Владелец бронирований. CreateBooking и ListBookings по booking.proto. Перенесённые бизнес-правила, ACL-клиент к монолиту", $tags="new")
+  ContainerDb(bookingDb, "booking-db", "PostgreSQL", "booking, outbox. Единственный писатель — booking-service", $tags="new")
+  ContainerQueue(kafka, "Kafka", "topic booking.events", "События BookingCreated", $tags="new")
+}
+
+Rel(guest, clients, "Использует")
+Rel(clients, monolith, "POST/GET /api/bookings и прочие /api/*", "REST/JSON")
+Rel(monolith, monolithDb, "Читает и пишет (кроме booking)", "JPA")
+
+Rel(monolith, bookingSvc, "CreateBooking, ListBookings", "gRPC :9090", $tags="new")
+Rel(bookingSvc, monolith, "Проверки: GET /api/users/{id}, /api/hotels/{id}, /api/reviews/hotel/{id}/trusted, POST /api/promos/validate", "REST, таймауты, circuit breaker", $tags="new")
+Rel(bookingSvc, bookingDb, "Бронь и outbox в одной транзакции", "JDBC", $tags="new")
+Rel(bookingSvc, kafka, "Публикует BookingCreated (transactional outbox)", "Kafka", $tags="new")
+Rel(kafka, monolith, "Обратная синхронизация в legacy booking на период отката", "Kafka consumer", $tags="new")
+
+SHOW_LEGEND()
+@enduml

@@ -1,0 +1,25 @@
+$ docker image ls booking-service
+REPOSITORY        TAG                                       IMAGE ID       CREATED         SIZE
+booking-service   unit-test                                 07d83a1ffd8f   6 minutes ago   431MB
+booking-service   booking-service-staging-20261026-153016   9e6743658f8b   7 minutes ago   20.2MB
+booking-service   booking-service-staging-20261026-153143   3c211cd1bbaf   7 minutes ago   20.2MB
+booking-service   booking-service-staging-20261026-153650   3645de527b6a   7 minutes ago   20.2MB
+booking-service   latest                                    3645de527b6a   7 minutes ago   20.2MB
+
+$ minikube image list | grep -E "booking-service|busybox"
+docker.io/library/busybox:1.36
+docker.io/library/booking-service:latest
+
+$ minikube image list
+registry.k8s.io/pause:3.10.2
+registry.k8s.io/kube-scheduler:v1.37.0
+registry.k8s.io/kube-proxy:v1.37.0
+registry.k8s.io/kube-controller-manager:v1.37.0
+registry.k8s.io/kube-apiserver:v1.37.0
+registry.k8s.io/etcd:3.7.0-0
+registry.k8s.io/coredns/coredns:v1.14.6
+gcr.io/k8s-minikube/storage-provisioner:v5
+docker.io/library/busybox:1.36
+docker.io/library/booking-service:latest
+docker.io/kindest/kindnetd:v20260820-69b56db7
+docker.io/kindest/kindnetd:v20250512-df8de77b

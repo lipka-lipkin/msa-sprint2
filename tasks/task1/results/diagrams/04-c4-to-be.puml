@@ -1,0 +1,67 @@
+@startuml 04-c4-to-be
+!include <C4/C4_Container>
+
+AddElementTag("edge", $bgColor="#6a1b9a", $borderColor="#4a148c", $legendText="edge и BFF")
+AddElementTag("first", $bgColor="#2e7d32", $borderColor="#1b5e20", $legendText="выносится первым")
+
+title Hotelio TO-BE — целевая микросервисная архитектура (C4, контейнеры)
+
+Person(guest, "Гость")
+Container(web, "Web-приложение", "SPA", "Клиент гостя")
+Container(mobile, "Мобильное приложение", "iOS / Android", "Клиент гостя")
+System_Ext(idp, "Identity Provider", "Keycloak / OIDC: аутентификация, JWT с userId и статусом")
+
+System_Boundary(hotelio, "Hotelio — Kubernetes + Istio (mTLS, retries, timeouts, canary)") {
+  Container(ingress, "Istio Ingress Gateway", "Envoy", "Единая точка входа. Маршрутизация Strangler Fig: /api/* ещё не вынесенных модулей идёт в монолит, вынесенные — в сервисы. Canary и feature-флаги по заголовкам", $tags="edge")
+  Container(gateway, "GraphQL Gateway (BFF)", "Apollo Federation", "Композиция подграфов под нужды Web и Mobile. Проверка JWT, ACL, проброс userid в подграфы", $tags="edge")
+
+  Container(booking, "booking-service", "Java/Spring Boot, gRPC, GraphQL subgraph", "Создание и история бронирований, расчёт цены", $tags="first")
+  ContainerDb(bookingDb, "booking-db", "PostgreSQL", "booking, outbox, локальные read-модели")
+
+  Container(hotel, "hotel-service", "gRPC, GraphQL subgraph", "Каталог отелей, operational, доступность и номерной фонд")
+  ContainerDb(hotelDb, "hotel-db", "PostgreSQL", "hotel")
+
+  Container(review, "review-service", "gRPC, GraphQL subgraph", "Отзывы. Предрасчитанная репутация: средняя оценка, число отзывов, trusted")
+  ContainerDb(reviewDb, "review-db", "PostgreSQL", "review, hotel_reputation")
+
+  Container(promo, "promo-service", "gRPC", "Промокоды, проверка по сроку действия и уровню клиента")
+  ContainerDb(promoDb, "promo-db", "PostgreSQL", "promo_code")
+
+  Container(user, "user-service", "gRPC, GraphQL subgraph", "Профиль, статус (VIP), active, blacklisted")
+  ContainerDb(userDb, "user-db", "PostgreSQL", "app_user")
+
+  ContainerQueue(kafka, "Kafka", "Event bus", "booking.events, user.events, hotel.events, review.events")
+}
+
+Rel(guest, web, "Использует")
+Rel(guest, mobile, "Использует")
+Rel(guest, idp, "Входит", "OIDC")
+Rel(web, ingress, "GraphQL / REST", "HTTPS + JWT")
+Rel(mobile, ingress, "GraphQL / REST", "HTTPS + JWT")
+Rel(ingress, gateway, "/graphql", "HTTP")
+Rel(gateway, idp, "Проверка подписи JWT", "JWKS")
+
+Rel(gateway, booking, "subgraph booking", "GraphQL")
+Rel(gateway, hotel, "subgraph hotel", "GraphQL")
+Rel(gateway, review, "subgraph review", "GraphQL")
+Rel(gateway, user, "subgraph user", "GraphQL")
+
+Rel(booking, user, "GetUser: active, blacklisted, tier", "gRPC")
+Rel(booking, hotel, "GetHotelAvailability", "gRPC")
+Rel(booking, review, "GetHotelReputation", "gRPC")
+Rel(booking, promo, "ValidatePromo(code, tier)", "gRPC")
+
+Rel(booking, bookingDb, "", "JDBC")
+Rel(hotel, hotelDb, "", "JDBC")
+Rel(review, reviewDb, "", "JDBC")
+Rel(promo, promoDb, "", "JDBC")
+Rel(user, userDb, "", "JDBC")
+
+Rel(booking, kafka, "BookingCreated", "outbox")
+Rel(user, kafka, "UserStatusChanged", "outbox")
+Rel(hotel, kafka, "HotelStatusChanged", "outbox")
+Rel(review, kafka, "HotelReputationChanged", "outbox")
+Rel(kafka, booking, "Обновляет локальные read-модели: статус пользователя, отеля, репутация", "consumer")
+
+SHOW_LEGEND()
+@enduml

@@ -1,0 +1,103 @@
+===== 1. Свои бронирования: userid: user1 → ALLOW
+$ curl -X POST localhost:4000/ -H 'content-type: application/json' -H 'userid: user1' --data '{"query":"query { bookingsByUser(userId: \"user1\") { id userId hotelId promoCode discountPercent price createdAt hotel { id name city rating } } }"}'
+{
+  "data": {
+    "bookingsByUser": [
+      {
+        "id": "10000022",
+        "userId": "user1",
+        "hotelId": "test-hotel-1",
+        "promoCode": "TESTCODE1",
+        "discountPercent": 10,
+        "price": 90,
+        "createdAt": "2026-10-26T07:52:34.365124Z",
+        "hotel": {
+          "id": "test-hotel-1",
+          "name": "Modern hotel in Seoul downtown with spa and skybar.",
+          "city": "Seoul",
+          "rating": 4.7
+        }
+      },
+      {
+        "id": "10000023",
+        "userId": "user1",
+        "hotelId": "demo-hotel-busan",
+        "promoCode": null,
+        "discountPercent": 0,
+        "price": 100,
+        "createdAt": "2026-10-26T07:52:35.148897Z",
+        "hotel": {
+          "id": "demo-hotel-busan",
+          "name": "Seaside resort in Haeundae with ocean view.",
+          "city": "Busan",
+          "rating": 4.8
+        }
+      }
+    ]
+  }
+}
+
+===== 2. Чужие бронирования: userid: user2 → FORBIDDEN
+{
+  "errors": [
+    {
+      "message": "Access denied: user user2 cannot view bookings of user user1",
+      "path": [
+        "bookingsByUser"
+      ],
+      "extensions": {
+        "code": "FORBIDDEN",
+        "serviceName": "booking"
+      }
+    }
+  ],
+  "data": {
+    "bookingsByUser": null
+  }
+}
+
+===== 3. Без заголовка userid → UNAUTHENTICATED
+{
+  "errors": [
+    {
+      "message": "Access denied: userid header is required",
+      "path": [
+        "bookingsByUser"
+      ],
+      "extensions": {
+        "code": "UNAUTHENTICATED",
+        "serviceName": "booking"
+      }
+    }
+  ],
+  "data": {
+    "bookingsByUser": null
+  }
+}
+
+===== 4. ACL сущности: _entities в booking-subgraph (так Booking запрашивает другой подграф), userid: user1
+    10000022 — бронь user1, 10000024 — бронь user2
+{"data":{"_entities":[{"id":"10000022","userId":"user1","hotelId":"test-hotel-1"},null]}}
+
+===== 5. hotel-subgraph напрямую: hotelsByIds, неизвестный id → null
+{
+  "data": {
+    "hotelsByIds": [
+      {
+        "id": "test-hotel-1",
+        "name": "Modern hotel in Seoul downtown with spa and skybar.",
+        "city": "Seoul",
+        "rating": 4.7,
+        "description": "Modern hotel in Seoul downtown with spa and skybar."
+      },
+      {
+        "id": "demo-hotel-busan",
+        "name": "Seaside resort in Haeundae with ocean view.",
+        "city": "Busan",
+        "rating": 4.8,
+        "description": "Seaside resort in Haeundae with ocean view."
+      },
+      null
+    ]
+  }
+}

@@ -1,0 +1,223 @@
+
+===== Регрессионные тесты: test/regress.sh (2026-10-24 17:45:42 UTC) =====
+🏁 Регрессионный тест Hotelio (монолит + booking-service + booking-history-service)
+🧪 Проверка подключения к БД...
+🧪 Загрузка фикстур...
+DELETE 4
+DELETE 3
+DELETE 12
+DELETE 3
+DELETE 2
+INSERT 0 4
+INSERT 0 3
+INSERT 0 12
+INSERT 0 3
+INSERT 0 2
+🧪 Очистка БД booking-service и booking-history-service...
+🧪 Миграция бронирований монолит → booking-service...
+▶️  Перенос бронирований монолита с id > 0
+    перенесено: 2
+✅ Сверка переноса: монолит 2 = booking-db 2
+🧪 Выполнение HTTP-тестов...
+
+Тесты пользователей...
+✅ Получение test-user-1 по ID работает
+✅ Статус test-user-1: ACTIVE
+✅ test-user-1 в блэклисте
+✅ test-user-1 активен
+✅ test-user-1 не авторизован (в блэклисте)
+✅ test-user-3 — VIP-пользователь
+✅ test-user-2 авторизован
+
+Тесты отелей...
+✅ test-hotel-1 получен по ID
+✅ test-hotel-1 работает
+✅ test-hotel-3 не работает
+✅ test-hotel-2 полностью забронирован
+✅ Поиск отелей в Сеуле работает
+✅ Топ-отели в Сеуле загружены
+
+Тесты ревью...
+✅ Отзывы test-hotel-1 найдены
+✅ test-hotel-1 признан надёжным
+✅ test-hotel-3 НЕ признан надёжным (ожидаемо)
+
+Тесты промокодов...
+✅ Промокод TESTCODE1 найден
+✅ VIP-промо доступен VIP
+✅ VIP-промо недоступен обычному
+✅ Обычный промо доступен
+✅ Истекший промо недоступен
+✅ POST /validate промо прошёл
+
+Тесты бронирования (монолит → gRPC → booking-service)...
+✅ Все бронирования получены (gRPC ListBookings, перенесённые из монолита)
+⚠️  GET /api/bookings без userId → 500: ограничение прокси p-o-y (setUserId(null)), см. tasks/task2/results/README.md
+✅ Бронирования test-user-2 найдены
+✅ Бронирование прошло (без промо)
+✅ VIP-цена 80, createdAt заполнен
+✅ Бронь 10000018 создана booking-service (диапазон id ≥ 10 000 000)
+✅ Бронь 10000018 сохранена в booking-db, а не в БД монолита
+✅ Бронирование с промо прошло
+✅ Скидка по промокоду применена: 100 - 10 = 90
+✅ Отклонено: неактивный пользователь
+✅ Отклонено: недоверенный отель
+✅ Отклонено: отель полностью забронирован
+✅ gRPC CreateBooking: неактивный пользователь → FAILED_PRECONDITION
+✅ gRPC CreateBooking: пользователь в блэклисте → отказ
+✅ gRPC CreateBooking: бронь 10000020, цена 100, createdAt в ISO-8601 UTC
+✅ Outbox: 3 события BookingCreated опубликованы в Kafka
+
+Тесты истории бронирований (Kafka → booking-history-service)...
+✅ История: получены все 3 события BookingCreated
+✅ История: записи о бронях 10000018, 10000019, 10000020 есть в booking_history
+✅ История пользователя test-user-3 доступна через REST
+✅ Статистика по пользователю test-user-2: 2 брони, 1 с промо, сумма 190
+✅ Статистика по отелю test-hotel-1: 3 брони, сумма 270
+✅ Статистика за 2026-10-24: 3 брони
+✅ Отклонённые бронирования в историю не попали
+
+✅ Все тесты пройдены!
+
+===== Ручные запросы: создание брони через монолит (REST → прокси → gRPC → booking-service) =====
+$ curl -X POST "localhost:8084/api/bookings?userId=test-user-2&hotelId=test-hotel-1&promoCode=TESTCODE1"
+{
+  "id": 10000021,
+  "userId": "test-user-2",
+  "hotelId": "test-hotel-1",
+  "promoCode": "TESTCODE1",
+  "discountPercent": 10.0,
+  "price": 90.0,
+  "createdAt": "2026-10-24T17:45:44.858042Z"
+}
+
+===== Ручные запросы: отказ (отель не прошёл проверку доверия) через монолит =====
+$ curl -X POST "localhost:8084/api/bookings?userId=test-user-2&hotelId=test-hotel-2"
+{
+  "timestamp": "2026-10-24T17:45:44.924+00:00",
+  "status": 500,
+  "error": "Internal Server Error",
+  "path": "/api/bookings"
+}
+
+===== Ручные запросы: тот же отказ напрямую по gRPC — видна причина =====
+$ grpcurl -plaintext -d '{"user_id":"test-user-2","hotel_id":"test-hotel-2"}' booking-service:9090 booking.BookingService/CreateBooking
+ERROR:
+  Code: FailedPrecondition
+  Message: Hotel is not trusted based on reviews
+
+===== Ручные запросы: статистика booking-history-service =====
+$ curl localhost:8086/api/history/stats/summary
+{
+  "bookingsCount": 4,
+  "totalPrice": 360.0,
+  "totalDiscount": 20.0,
+  "uniqueUsers": 2,
+  "uniqueHotels": 1
+}
+$ curl localhost:8086/api/history/stats/users
+[
+  {
+    "userId": "test-user-2",
+    "bookingsCount": 3,
+    "totalPrice": 280.0,
+    "totalDiscount": 20.0,
+    "promoBookingsCount": 2,
+    "firstBookingAt": "2026-10-24T17:45:43.516+00:00",
+    "lastBookingAt": "2026-10-24T17:45:44.858+00:00"
+  },
+  {
+    "userId": "test-user-3",
+    "bookingsCount": 1,
+    "totalPrice": 80.0,
+    "totalDiscount": 0.0,
+    "promoBookingsCount": 0,
+    "firstBookingAt": "2026-10-24T17:45:43.380+00:00",
+    "lastBookingAt": "2026-10-24T17:45:43.380+00:00"
+  }
+]
+$ curl localhost:8086/api/history/stats/hotels
+[
+  {
+    "hotelId": "test-hotel-1",
+    "bookingsCount": 4,
+    "totalPrice": 360.0,
+    "totalDiscount": 20.0,
+    "promoBookingsCount": 2,
+    "lastBookingAt": "2026-10-24T17:45:44.858+00:00"
+  }
+]
+$ curl localhost:8086/api/history/stats/days
+[
+  {
+    "day": "2026-10-24",
+    "bookingsCount": 4,
+    "totalPrice": 360.0,
+    "totalDiscount": 20.0,
+    "promoBookingsCount": 2
+  }
+]
+
+===== Логи booking-service (последние строки) =====
+2026-10-24T17:45:38.416Z  WARN 1 --- [booking-service] [ault-executor-4] c.h.booking.service.BookingService       : Hotel test-hotel-2 is not trusted
+2026-10-24T17:45:38.436Z  INFO 1 --- [booking-service] [ault-executor-4] c.h.booking.service.BookingService       : Creating booking: userId=test-user-0, hotelId=test-hotel-1, promoCode=null
+2026-10-24T17:45:38.440Z  WARN 1 --- [booking-service] [ault-executor-4] c.h.booking.service.BookingService       : User test-user-0 is inactive
+2026-10-24T17:45:38.464Z  INFO 1 --- [booking-service] [ault-executor-4] c.h.booking.service.BookingService       : Creating booking: userId=test-user-1, hotelId=test-hotel-1, promoCode=null
+2026-10-24T17:45:38.468Z  WARN 1 --- [booking-service] [ault-executor-4] c.h.booking.service.BookingService       : User test-user-1 is blacklisted
+2026-10-24T17:45:38.489Z  INFO 1 --- [booking-service] [ault-executor-4] c.h.booking.service.BookingService       : Creating booking: userId=test-user-2, hotelId=test-hotel-1, promoCode=null
+2026-10-24T17:45:38.499Z  INFO 1 --- [booking-service] [ault-executor-4] c.h.booking.service.BookingService       : Final price calculated: base=100.0, discount=0.0, final=100.0
+2026-10-24T17:45:38.500Z  INFO 1 --- [booking-service] [ault-executor-4] c.h.booking.service.BookingService       : Booking 10000017 saved, event 63a6ccb3-4575-4e22-8ddd-ac6e9039b23f queued
+2026-10-24T17:45:38.788Z  INFO 1 --- [booking-service] [   scheduling-1] com.hotelio.booking.event.OutboxRelay    : Published BookingCreated for booking 10000016 to booking.events
+2026-10-24T17:45:38.791Z  INFO 1 --- [booking-service] [   scheduling-1] com.hotelio.booking.event.OutboxRelay    : Published BookingCreated for booking 10000017 to booking.events
+2026-10-24T17:45:43.367Z  INFO 1 --- [booking-service] [ault-executor-4] c.h.booking.service.BookingService       : Creating booking: userId=test-user-3, hotelId=test-hotel-1, promoCode=null
+2026-10-24T17:45:43.380Z  INFO 1 --- [booking-service] [ault-executor-4] c.h.booking.service.BookingService       : Final price calculated: base=80.0, discount=0.0, final=80.0
+2026-10-24T17:45:43.384Z  INFO 1 --- [booking-service] [ault-executor-4] c.h.booking.service.BookingService       : Booking 10000018 saved, event bc5fbab3-6d85-488b-9c80-342418974bef queued
+2026-10-24T17:45:43.496Z  INFO 1 --- [booking-service] [ault-executor-4] c.h.booking.service.BookingService       : Creating booking: userId=test-user-2, hotelId=test-hotel-1, promoCode=TESTCODE1
+2026-10-24T17:45:43.516Z  INFO 1 --- [booking-service] [ault-executor-4] c.h.booking.service.BookingService       : Final price calculated: base=100.0, discount=10.0, final=90.0
+2026-10-24T17:45:43.518Z  INFO 1 --- [booking-service] [ault-executor-4] c.h.booking.service.BookingService       : Booking 10000019 saved, event cf0acf73-3ddf-4efd-b31b-42bb662f5014 queued
+2026-10-24T17:45:43.584Z  INFO 1 --- [booking-service] [ault-executor-4] c.h.booking.service.BookingService       : Creating booking: userId=test-user-0, hotelId=test-hotel-1, promoCode=null
+2026-10-24T17:45:43.588Z  WARN 1 --- [booking-service] [ault-executor-4] c.h.booking.service.BookingService       : User test-user-0 is inactive
+2026-10-24T17:45:43.602Z  INFO 1 --- [booking-service] [ault-executor-4] c.h.booking.service.BookingService       : Creating booking: userId=test-user-2, hotelId=test-hotel-3, promoCode=null
+2026-10-24T17:45:43.610Z  WARN 1 --- [booking-service] [ault-executor-4] c.h.booking.service.BookingService       : Hotel test-hotel-3 is not operational
+2026-10-24T17:45:43.627Z  INFO 1 --- [booking-service] [ault-executor-4] c.h.booking.service.BookingService       : Creating booking: userId=test-user-2, hotelId=test-hotel-2, promoCode=null
+2026-10-24T17:45:43.637Z  WARN 1 --- [booking-service] [ault-executor-4] c.h.booking.service.BookingService       : Hotel test-hotel-2 is not trusted
+2026-10-24T17:45:43.655Z  INFO 1 --- [booking-service] [ault-executor-4] c.h.booking.service.BookingService       : Creating booking: userId=test-user-0, hotelId=test-hotel-1, promoCode=null
+2026-10-24T17:45:43.658Z  WARN 1 --- [booking-service] [ault-executor-4] c.h.booking.service.BookingService       : User test-user-0 is inactive
+2026-10-24T17:45:43.671Z  INFO 1 --- [booking-service] [ault-executor-4] c.h.booking.service.BookingService       : Creating booking: userId=test-user-1, hotelId=test-hotel-1, promoCode=null
+2026-10-24T17:45:43.674Z  WARN 1 --- [booking-service] [ault-executor-4] c.h.booking.service.BookingService       : User test-user-1 is blacklisted
+2026-10-24T17:45:43.686Z  INFO 1 --- [booking-service] [ault-executor-4] c.h.booking.service.BookingService       : Creating booking: userId=test-user-2, hotelId=test-hotel-1, promoCode=null
+2026-10-24T17:45:43.694Z  INFO 1 --- [booking-service] [ault-executor-4] c.h.booking.service.BookingService       : Final price calculated: base=100.0, discount=0.0, final=100.0
+2026-10-24T17:45:43.697Z  INFO 1 --- [booking-service] [ault-executor-4] c.h.booking.service.BookingService       : Booking 10000020 saved, event 3f530413-ad62-4231-bd73-bc5479b7ab89 queued
+2026-10-24T17:45:43.856Z  INFO 1 --- [booking-service] [   scheduling-1] com.hotelio.booking.event.OutboxRelay    : Published BookingCreated for booking 10000018 to booking.events
+2026-10-24T17:45:43.859Z  INFO 1 --- [booking-service] [   scheduling-1] com.hotelio.booking.event.OutboxRelay    : Published BookingCreated for booking 10000019 to booking.events
+2026-10-24T17:45:43.861Z  INFO 1 --- [booking-service] [   scheduling-1] com.hotelio.booking.event.OutboxRelay    : Published BookingCreated for booking 10000020 to booking.events
+2026-10-24T17:45:44.818Z  INFO 1 --- [booking-service] [ault-executor-4] c.h.booking.service.BookingService       : Creating booking: userId=test-user-2, hotelId=test-hotel-1, promoCode=TESTCODE1
+2026-10-24T17:45:44.857Z  INFO 1 --- [booking-service] [ault-executor-4] c.h.booking.service.BookingService       : Final price calculated: base=100.0, discount=10.0, final=90.0
+2026-10-24T17:45:44.860Z  INFO 1 --- [booking-service] [ault-executor-4] c.h.booking.service.BookingService       : Booking 10000021 saved, event 81967084-6af6-463a-a6ca-e7397df11194 queued
+2026-10-24T17:45:44.875Z  INFO 1 --- [booking-service] [   scheduling-1] com.hotelio.booking.event.OutboxRelay    : Published BookingCreated for booking 10000021 to booking.events
+2026-10-24T17:45:44.899Z  INFO 1 --- [booking-service] [ault-executor-4] c.h.booking.service.BookingService       : Creating booking: userId=test-user-2, hotelId=test-hotel-2, promoCode=null
+2026-10-24T17:45:44.920Z  WARN 1 --- [booking-service] [ault-executor-4] c.h.booking.service.BookingService       : Hotel test-hotel-2 is not trusted
+2026-10-24T17:45:45.265Z  INFO 1 --- [booking-service] [ault-executor-4] c.h.booking.service.BookingService       : Creating booking: userId=test-user-2, hotelId=test-hotel-2, promoCode=null
+2026-10-24T17:45:45.283Z  WARN 1 --- [booking-service] [ault-executor-4] c.h.booking.service.BookingService       : Hotel test-hotel-2 is not trusted
+
+===== Логи booking-history-service (последние строки) =====
+2026-10-24T17:40:04.979Z  INFO 1 --- [booking-history-service] [ntainer#0-0-C-1] c.hotelio.history.BookingEventsListener  : Recorded booking 10000002 (user=test-user-2, hotel=test-hotel-1) from partition 2 offset 0
+2026-10-24T17:40:17.207Z  INFO 1 --- [booking-history-service] [ntainer#0-0-C-1] c.hotelio.history.BookingEventsListener  : Recorded booking 10000003 (user=test-user-3, hotel=test-hotel-1) from partition 1 offset 1
+2026-10-24T17:40:17.216Z  INFO 1 --- [booking-history-service] [ntainer#0-0-C-1] c.hotelio.history.BookingEventsListener  : Recorded booking 10000004 (user=test-user-2, hotel=test-hotel-1) from partition 0 offset 1
+2026-10-24T17:40:17.722Z  INFO 1 --- [booking-history-service] [ntainer#0-0-C-1] c.hotelio.history.BookingEventsListener  : Recorded booking 10000005 (user=test-user-2, hotel=test-hotel-1) from partition 2 offset 1
+2026-10-24T17:40:18.744Z  INFO 1 --- [booking-history-service] [ntainer#0-0-C-1] c.hotelio.history.BookingEventsListener  : Recorded booking 10000006 (user=test-user-2, hotel=test-hotel-1) from partition 1 offset 2
+2026-10-24T17:40:48.872Z  INFO 1 --- [booking-history-service] [ntainer#0-0-C-1] c.hotelio.history.BookingEventsListener  : Recorded booking 10000007 (user=test-user-3, hotel=test-hotel-1) from partition 1 offset 3
+2026-10-24T17:40:48.890Z  INFO 1 --- [booking-history-service] [ntainer#0-0-C-1] c.hotelio.history.BookingEventsListener  : Recorded booking 10000008 (user=test-user-2, hotel=test-hotel-1) from partition 1 offset 4
+2026-10-24T17:40:49.373Z  INFO 1 --- [booking-history-service] [ntainer#0-0-C-1] c.hotelio.history.BookingEventsListener  : Recorded booking 10000009 (user=test-user-2, hotel=test-hotel-1) from partition 2 offset 2
+2026-10-24T17:40:50.432Z  INFO 1 --- [booking-history-service] [ntainer#0-0-C-1] c.hotelio.history.BookingEventsListener  : Recorded booking 10000010 (user=test-user-2, hotel=test-hotel-1) from partition 1 offset 5
+2026-10-24T17:42:55.404Z  INFO 1 --- [booking-history-service] [ntainer#0-0-C-1] c.hotelio.history.BookingEventsListener  : Recorded booking 10000011 (user=test-user-3, hotel=test-hotel-1) from partition 1 offset 6
+2026-10-24T17:42:55.420Z  INFO 1 --- [booking-history-service] [ntainer#0-0-C-1] c.hotelio.history.BookingEventsListener  : Recorded booking 10000012 (user=test-user-2, hotel=test-hotel-1) from partition 1 offset 7
+2026-10-24T17:42:55.422Z  INFO 1 --- [booking-history-service] [ntainer#0-0-C-1] c.hotelio.history.BookingEventsListener  : Recorded booking 10000013 (user=test-user-2, hotel=test-hotel-1) from partition 1 offset 8
+2026-10-24T17:42:56.480Z  INFO 1 --- [booking-history-service] [ntainer#0-0-C-1] c.hotelio.history.BookingEventsListener  : Recorded booking 10000014 (user=test-user-2, hotel=test-hotel-1) from partition 0 offset 2
+2026-10-24T17:45:38.307Z  INFO 1 --- [booking-history-service] [ntainer#0-0-C-1] c.hotelio.history.BookingEventsListener  : Recorded booking 10000015 (user=test-user-3, hotel=test-hotel-1) from partition 1 offset 9
+2026-10-24T17:45:38.795Z  INFO 1 --- [booking-history-service] [ntainer#0-0-C-1] c.hotelio.history.BookingEventsListener  : Recorded booking 10000016 (user=test-user-2, hotel=test-hotel-1) from partition 0 offset 3
+2026-10-24T17:45:38.801Z  INFO 1 --- [booking-history-service] [ntainer#0-0-C-1] c.hotelio.history.BookingEventsListener  : Recorded booking 10000017 (user=test-user-2, hotel=test-hotel-1) from partition 1 offset 10
+2026-10-24T17:45:43.869Z  INFO 1 --- [booking-history-service] [ntainer#0-0-C-1] c.hotelio.history.BookingEventsListener  : Recorded booking 10000018 (user=test-user-3, hotel=test-hotel-1) from partition 0 offset 4
+2026-10-24T17:45:43.876Z  INFO 1 --- [booking-history-service] [ntainer#0-0-C-1] c.hotelio.history.BookingEventsListener  : Recorded booking 10000019 (user=test-user-2, hotel=test-hotel-1) from partition 2 offset 3
+2026-10-24T17:45:43.881Z  INFO 1 --- [booking-history-service] [ntainer#0-0-C-1] c.hotelio.history.BookingEventsListener  : Recorded booking 10000020 (user=test-user-2, hotel=test-hotel-1) from partition 2 offset 4
+2026-10-24T17:45:44.880Z  INFO 1 --- [booking-history-service] [ntainer#0-0-C-1] c.hotelio.history.BookingEventsListener  : Recorded booking 10000021 (user=test-user-2, hotel=test-hotel-1) from partition 2 offset 5

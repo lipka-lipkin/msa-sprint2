@@ -1,0 +1,5 @@
+$ ./check-dns.sh
+[INFO] Running in-cluster DNS test...
+[INFO] DNS: booking-service -> 10.103.81.228 (Service ClusterIP 10.103.81.228)
+[INFO] DNS Response: pong
+[PASS] DNS test succeeded

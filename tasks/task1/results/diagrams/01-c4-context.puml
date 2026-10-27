@@ -1,0 +1,23 @@
+@startuml 01-c4-context
+!include <C4/C4_Context>
+
+AddElementTag("planned", $bgColor="#8a8a8a", $borderColor="#5c5c5c", $legendText="появится в целевой архитектуре")
+
+title Hotelio — диаграмма контекста (C4, уровень 1)
+
+Person(guest, "Гость", "Ищет отели, читает отзывы, применяет промокоды, бронирует и просматривает свои бронирования")
+Person(vip, "VIP-гость", "Гость со статусом VIP: базовая цена ниже, доступны VIP-промокоды")
+
+System(hotelio, "Hotelio", "Платформа бронирования отелей: каталог отелей, отзывы и репутация, промокоды, профиль пользователя, бронирования")
+
+System_Ext(idp, "Identity Provider", "OIDC/OAuth2 (например, Keycloak). Аутентификация гостей, выдача JWT со статусом пользователя", $tags="planned")
+System_Ext(consumers, "Потребители событий", "Уведомления, аналитика, история бронирований — подписчики на события о бронированиях", $tags="planned")
+
+Rel(guest, hotelio, "Ищет отели, бронирует", "HTTPS: REST сейчас, GraphQL (BFF) в целевой архитектуре")
+Rel(vip, hotelio, "Бронирует со скидкой", "HTTPS")
+Rel(guest, idp, "Входит в систему", "OIDC")
+Rel(hotelio, idp, "Проверяет токены", "JWKS")
+Rel(hotelio, consumers, "Публикует события BookingCreated", "Kafka")
+
+SHOW_LEGEND()
+@enduml

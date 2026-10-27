@@ -1,0 +1,45 @@
+@startuml 02-c4-as-is
+!include <C4/C4_Component>
+
+AddElementTag("hot", $bgColor="#c62828", $borderColor="#8e0000", $legendText="узкое место: максимум зависимостей и нагрузки")
+
+title Hotelio AS-IS — монолит (C4, контейнеры и компоненты)
+
+Person(guest, "Гость")
+Container(clients, "Клиентские приложения", "Web, Mobile", "Работают напрямую с универсальным REST API монолита")
+
+System_Boundary(hotelio, "Hotelio") {
+  Container_Boundary(monolith, "hotelio-monolith (Java 17, Spring Boot 3.2, единый деплой)") {
+    Component(api, "REST-контроллеры", "Spring MVC", "/api/bookings, /api/users, /api/hotels, /api/reviews, /api/promos")
+    Component(booking, "BookingService", "Spring Bean", "Создание и выдача бронирований: валидация, расчёт цены и скидки", $tags="hot")
+    Component(user, "AppUserService", "Spring Bean", "Статус, active, blacklisted, VIP, authorized")
+    Component(hotel, "HotelService", "Spring Bean", "Каталог, operational, fullyBooked, поиск по городу")
+    Component(review, "ReviewService", "Spring Bean", "Отзывы, «надёжность» отеля (≥10 отзывов и средняя ≥4.0)")
+    Component(promo, "PromoCodeService", "Spring Bean", "Валидация промокодов, VIP-only")
+  }
+  ContainerDb(db, "PostgreSQL hotelio", "PostgreSQL 15", "Одна схема на всех: app_user, hotel, review, promo_code, booking. ddl-auto: create")
+}
+
+Rel(guest, clients, "Использует")
+Rel(clients, api, "Вызывает", "REST/JSON")
+Rel(api, booking, "")
+Rel(api, user, "")
+Rel(api, hotel, "")
+Rel(api, review, "")
+Rel(api, promo, "")
+Rel(api, db, "ReviewController читает review в обход сервиса", "JPA")
+
+Rel(booking, user, "isUserActive, isUserBlacklisted, getUserStatus", "вызов метода")
+Rel(booking, hotel, "isHotelOperational, isHotelFullyBooked", "вызов метода")
+Rel(booking, review, "isTrustedHotel", "вызов метода")
+Rel(booking, promo, "validate(code, userId)", "вызов метода")
+Rel(promo, user, "getUserStatus", "вызов метода")
+
+Rel(booking, db, "booking", "JPA")
+Rel(user, db, "app_user", "JPA")
+Rel(hotel, db, "hotel", "JPA")
+Rel(review, db, "review", "JPA")
+Rel(promo, db, "promo_code", "JPA")
+
+SHOW_LEGEND()
+@enduml

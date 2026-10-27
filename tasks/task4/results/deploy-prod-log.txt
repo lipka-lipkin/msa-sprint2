@@ -1,0 +1,36 @@
+parsing and downloads finished in 128 ms.
+json schema validated in 123 ms
+deploy starting shell (deploy)
+deploy $ minikube status
+deploy > minikube
+deploy > type: Control Plane
+deploy > host: Running
+deploy > kubelet: Running
+deploy > apiserver: Running
+deploy > kubeconfig: Configured
+deploy > 
+deploy $ minikube image load "$IMAGE_NAME:$IMAGE_TAG"
+deploy $ IMAGE_ID=$(docker image inspect --format '{{.Id}}' "$IMAGE_NAME:$IMAGE_TAG" | sed 's/^sha256://' | cut -c1-12)
+deploy $ helm upgrade --install "$RELEASE_NAME" "$CHART_PATH" -f "$CHART_PATH/values-$DEPLOY_ENV.yaml" --set image.name="$IMAGE_NAME" --set image.tag="$IMAGE_TAG" --set-string podAnnotations.imageId="$IMAGE_ID" --wait --timeout 120s # collapsed multi-line command
+deploy > Release "booking-service" has been upgraded. Happy Helming!
+deploy > NAME: booking-service
+deploy > LAST DEPLOYED: Mon Oct 26 18:37:09 2026
+deploy > NAMESPACE: default
+deploy > STATUS: deployed
+deploy > REVISION: 5
+deploy > DESCRIPTION: Upgrade complete
+deploy > TEST SUITE: None
+deploy $ kubectl rollout status deployment/"$RELEASE_NAME" --timeout=120s
+deploy > deployment "booking-service" successfully rolled out
+deploy $ kubectl get pods,svc -l app="$RELEASE_NAME"
+deploy > NAME                                   READY   STATUS        RESTARTS   AGE
+deploy > pod/booking-service-7cc4d4588f-n2dsf   1/1     Running       0          3s
+deploy > pod/booking-service-7cc4d4588f-n9fcz   1/1     Running       0          6s
+deploy > pod/booking-service-7cc4d4588f-tdn29   1/1     Running       0          9s
+deploy > pod/booking-service-854cc767fd-9nwd5   1/1     Terminating   0          33s
+deploy > 
+deploy > NAME                      TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)   AGE
+deploy > service/booking-service   ClusterIP   10.110.85.135   <none>        80/TCP    7m6s
+deploy finished in 15 s
+
+ PASS  deploy
